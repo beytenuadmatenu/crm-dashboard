@@ -31,9 +31,12 @@ type LeadDoc = {
 const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, dot: string }> = {
   NEW_LEAD: { label: 'ליד חדש ✨', color: '#1D4ED8', bg: '#EFF6FF', dot: '#3B82F6' },
   MEETING_SCHEDULED: { label: 'נקבעה פגישה 📅', color: '#B45309', bg: '#FFFBEB', dot: '#F59E0B' },
+  CALL_BACK_LATER: { label: 'לחזור מאוחר יותר 📞', color: '#7C3AED', bg: '#F5F3FF', dot: '#8B5CF6' },
+  DOC_COLLECTION: { label: 'איסוף מסמכים 📂', color: '#0EA5E9', bg: '#F0F9FF', dot: '#0EA5E9' },
+  MEETING_HELD: { label: 'התקיימה פגישה 🤝', color: '#059669', bg: '#ECFDF5', dot: '#10B981' },
   IN_PROCESS: { label: 'בטיפול ⏳', color: '#4F46E5', bg: '#EEF2FF', dot: '#6366F1' },
   CLIENT: { label: 'אושר ✅', color: '#065F46', bg: '#ECFDF5', dot: '#10B981' },
-  CANCELLED: { label: 'בוטל ❌', color: '#991B1B', bg: '#FEF2F2', dot: '#EF4444' },
+  CANCELLED: { label: 'לא רלוונטי 🗑️', color: '#64748B', bg: '#F8FAFC', dot: '#94A3B8' },
 };
 
 const s = {
@@ -44,14 +47,14 @@ const s = {
   sub:     { fontSize: 11, color: '#94A3B8', marginTop: 1 },
   btn:     { background: '#0F172A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
   main:    { maxWidth: '100%', margin: '0 auto', padding: '24px 16px' },
-  grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 },
-  card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,.04)', position: 'relative' as const, overflow: 'hidden' as const },
-  cardIcon: { position: 'absolute' as const, top: 18, left: 20, fontSize: 24, opacity: 0.15 },
-  cl:      { fontSize: 12, color: '#64748B', marginBottom: 4 },
-  cv:      { fontSize: 28, fontWeight: 700, margin: 0 },
-  filters: { display: 'flex' as const, gap: 12, marginBottom: 20, flexWrap: 'wrap' as const, alignItems: 'center' },
-  input:   { flex: 1, minWidth: 200, border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fff' },
-  fbtn:    (active: boolean): CSSProperties => ({ padding: '8px 14px', border: '1px solid', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: active ? '#0F172A' : '#fff', color: active ? '#fff' : '#475569', borderColor: active ? '#0F172A' : '#CBD5E1' }),
+  grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(9, 1fr)', gap: 10, marginBottom: 28 },
+  card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '12px 8px', boxShadow: '0 1px 3px rgba(0,0,0,.04)', position: 'relative' as const, overflow: 'hidden' as const },
+  cardIcon: { position: 'absolute' as const, top: 8, left: 8, fontSize: 16, opacity: 0.15 },
+  cl:      { fontSize: 10, color: '#64748B', marginBottom: 2, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' },
+  cv:      { fontSize: 18, fontWeight: 700, margin: 0 },
+  filters: { display: 'flex' as const, gap: 8, marginBottom: 24, flexWrap: 'nowrap' as const, alignItems: 'center', overflowX: 'auto' as const, paddingBottom: 8 },
+  input:   { flex: '0 0 250px', border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fff' },
+  fbtn:    (active: boolean): CSSProperties => ({ padding: '8px 12px', border: '1px solid', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: active ? '#0F172A' : '#fff', color: active ? '#fff' : '#475569', borderColor: active ? '#0F172A' : '#CBD5E1', whiteSpace: 'nowrap' as const }),
   tableWrapper: { background: '#fff', borderRadius: 12, overflowX: 'auto' as const, border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(0,0,0,.05)' },
   table:   { width: '100%', borderCollapse: 'collapse' as const },
   th:      { padding: '12px 10px', textAlign: 'right' as const, fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: 1, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' },
@@ -407,7 +410,12 @@ export default function Home() {
     total: leads.length,
     new: leads.filter(l => l.status === 'NEW_LEAD').length,
     meetings: leads.filter(l => l.status === 'MEETING_SCHEDULED').length,
+    held: leads.filter(l => l.status === 'MEETING_HELD').length,
+    docs: leads.filter(l => l.status === 'DOC_COLLECTION').length,
+    later: leads.filter(l => l.status === 'CALL_BACK_LATER').length,
+    process: leads.filter(l => l.status === 'IN_PROCESS').length,
     clients: leads.filter(l => l.status === 'CLIENT').length,
+    cancelled: leads.filter(l => l.status === 'CANCELLED').length,
   }), [leads]);
 
   // Calendar logic
@@ -535,7 +543,12 @@ export default function Home() {
             { label: 'סה"כ לידים', value: stats.total, color: '#0F172A', icon: '👥' },
             { label: 'לידים חדשים', value: stats.new, color: '#1D4ED8', icon: '✨' },
             { label: 'נקבעו פגישות', value: stats.meetings, color: '#B45309', icon: '📅' },
+            { label: 'התקיימו פגישות', value: stats.held, color: '#059669', icon: '🤝' },
+            { label: 'איסוף מסמכים', value: stats.docs, color: '#0EA5E9', icon: '📂' },
+            { label: 'בטיפול', value: stats.process, color: '#4F46E5', icon: '⏳' },
+            { label: 'לחזור מאוחר יותר', value: stats.later, color: '#7C3AED', icon: '📞' },
             { label: 'אושרו', value: stats.clients, color: '#065F46', icon: '✅' },
+            { label: 'לא רלוונטי', value: stats.cancelled, color: '#64748B', icon: '🗑️' },
           ].map(c => (
             <div key={c.label} style={s.card}>
               <span style={s.cardIcon}>{c.icon}</span>
@@ -554,7 +567,7 @@ export default function Home() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
-              {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'IN_PROCESS', 'CLIENT', 'CANCELLED'].map(st => (
+              {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'IN_PROCESS', 'CLIENT', 'CANCELLED'].map(st => (
                 <button key={st} style={s.fbtn(filter === st)} onClick={() => setFilter(st)}>
                   {st === 'ALL' ? 'הכל' : STATUS_CONFIG[st]?.label || st}
                 </button>
