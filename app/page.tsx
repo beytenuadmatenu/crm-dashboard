@@ -29,7 +29,7 @@ type LeadDoc = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, dot: string }> = {
-  NEW_LEAD: { label: 'חדש ✨', color: '#1D4ED8', bg: '#EFF6FF', dot: '#3B82F6' },
+  NEW_LEAD: { label: 'ליד חדש ✨', color: '#1D4ED8', bg: '#EFF6FF', dot: '#3B82F6' },
   MEETING_SCHEDULED: { label: 'נקבעה פגישה 📅', color: '#B45309', bg: '#FFFBEB', dot: '#F59E0B' },
   IN_PROCESS: { label: 'בטיפול ⏳', color: '#4F46E5', bg: '#EEF2FF', dot: '#6366F1' },
   CLIENT: { label: 'אושר ✅', color: '#065F46', bg: '#ECFDF5', dot: '#10B981' },
@@ -132,6 +132,29 @@ export default function Home() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState("");
 
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
+
+  useEffect(() => {
+    const auth = sessionStorage.getItem('crm_auth');
+    setIsAuthenticated(auth === 'true');
+  }, []);
+
+  function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (loginForm.user.toUpperCase() === 'SAPIR' && loginForm.pass === 'S102030!') {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('crm_auth', 'true');
+    } else {
+      alert('פרטי התחברות שגויים');
+    }
+  }
+
+  function handleLogout() {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('crm_auth');
+  }
+
   useEffect(() => { fetchLeads(); }, []);
 
   async function fetchLeads() {
@@ -196,7 +219,8 @@ export default function Home() {
       
       setLeads(prev => prev.map(l => l.id === meetingModalLead.id ? { ...l, meeting_time: formattedTime, status: 'MEETING_SCHEDULED' } : l));
       setMeetingModalLead(null);
-      alert('הפגישה נקבעה בהצלחה!');
+      // Automatically prompt for sync if it wasn't a direct "Save & Sync" click (handled by button text usually)
+      alert('הפגישה נקבעה בהצלחה במערכת!');
     } catch (err: any) {
       alert('שגיאה בקביעת פגישה: ' + err.message);
     }
@@ -204,17 +228,40 @@ export default function Home() {
 
   function shareByEmail(lead: Lead) {
     const recipient = "admateinu.beitenu@gmail.com";
-    const subject = encodeURIComponent(`פגישת יעוץ עם ${lead.full_name} ${lead.meeting_time}`);
-    const body = encodeURIComponent(`שלום ${lead.full_name},
+    const subject = encodeURIComponent(`תזכורת פגישה: ${lead.full_name} ${lead.meeting_time}`);
+    const body = encodeURIComponent(`שלום רב,
  
- אנו שמחים לאשר את פגישת הייעוץ שלך עם "אדמתנו ביתנו - הבית הפיננסי".
+ להלן פרטי פגישת ייעוץ חדשה שתואמה במערכת:
  
- הפגישה נקבעה ל: ${lead.meeting_time}.
+ שם הלקוח: ${lead.full_name}
+ טלפון: ${lead.phone}
+ מועד הפגישה: ${lead.meeting_time}
  
- נשמח לראותך!
+ סיכום ופרטים:
+ ${lead.summary_sentence || 'אין סיכום זמין'}
+ 
  בברכה,
- ספיר - אדמתנו ביתנו משכנתאות`);
-    window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
+ מערכת CRM - אדמתנו ביתנו`);
+    
+    // Using Gmail Web Compose link
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${body}`;
+    window.open(gmailUrl, '_blank');
+  }
+
+  function addToCalendar(lead: Lead) {
+    const startDate = parseHebrewDate(lead.meeting_time);
+    if (!startDate) return alert('לא ניתן לקבוע פגישה ביומן ללא תאריך תקין.');
+    
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Default 1 hour
+    
+    const format = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const dates = `${format(startDate)}/${format(endDate)}`;
+    
+    const details = `טלפון: ${lead.phone}\nסיכום: ${lead.summary_sentence || ''}`;
+    const guestEmail = "admateinu.beitenu@gmail.com";
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`פגישה: ${lead.full_name}`)}&dates=${dates}&details=${encodeURIComponent(details)}&add=${encodeURIComponent(guestEmail)}&sf=true&output=xml`;
+    
+    window.open(url, '_blank');
   }
 
   async function handleAddLead(e: React.FormEvent) {
@@ -290,7 +337,7 @@ export default function Home() {
       
       if (successfulDocs.length > 0) {
         setLeadDocs(prev => [...successfulDocs, ...prev]);
-        alert(`העלאה הושלמה: ${successfulDocs.length} קבצים הועלו בהצלחה.`);
+        // alert removed as per user request
       }
       
       const errors = results
@@ -404,6 +451,56 @@ export default function Home() {
     return map;
   }, [leads]);
 
+  if (isAuthenticated === null) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0F172A', color: '#64748B' }}>טוען...</div>;
+
+  if (!isAuthenticated) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(16px)', borderRadius: 24, padding: 48, width: '100%', maxWidth: 420, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 24 }}>🛡️</div>
+          <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.025em' }}>כניסה למערכת</h1>
+          <p style={{ color: '#94A3B8', fontSize: 16, marginBottom: 40 }}>אדמתנו ביתנו — CRM מאובטח</p>
+          
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ textAlign: 'right' }}>
+              <label htmlFor="crm-user" style={{ color: '#CBD5E1', fontSize: 14, fontWeight: 600, display: 'block', marginBottom: 10 }}>שם משתמש</label>
+              <input 
+                id="crm-user"
+                name="username"
+                autoComplete="username"
+                value={loginForm.user} 
+                onChange={e => setLoginForm({...loginForm, user: e.target.value})}
+                placeholder="הזן שם משתמש"
+                autoFocus
+                style={{ width: '100%', padding: '14px 18px', borderRadius: 12, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', outline: 'none', transition: 'border-color 0.2s' }}
+              />
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <label htmlFor="crm-pass" style={{ color: '#CBD5E1', fontSize: 14, fontWeight: 600, display: 'block', marginBottom: 10 }}>סיסמא</label>
+              <input 
+                id="crm-pass"
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                value={loginForm.pass} 
+                onChange={e => setLoginForm({...loginForm, pass: e.target.value})}
+                placeholder="••••••••"
+                style={{ width: '100%', padding: '14px 18px', borderRadius: 12, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', outline: 'none', transition: 'border-color 0.2s' }}
+              />
+            </div>
+            <button type="submit" style={{ width: '100%', padding: '16px', borderRadius: 12, background: '#3B82F6', color: '#fff', border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)', transition: 'transform 0.1s' }}>
+              התחברות למערכת
+            </button>
+          </form>
+          
+          <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid rgba(255, 255, 255, 0.1)', color: '#64748B', fontSize: 12 }}>
+            המערכת מיועדת לצוות מורשה בלבד
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={s.page}>
       <header style={s.header}>
@@ -413,7 +510,14 @@ export default function Home() {
             <p style={s.sub}>מערכת לניהול לידים ולקוחות</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button 
+            style={{ ...s.btn, background: 'none', color: '#64748B', border: '1px solid #E2E8F0', padding: '6px 12px', fontSize: 12, gap: 8 }} 
+            onClick={handleLogout}
+            title="התנתקות מהמערכת"
+          >
+            <span>🚪</span> התנתקות
+          </button>
           <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: 8, padding: 4, marginRight: 12 }}>
              <button style={{ ...s.fbtn(viewMode === 'table'), padding: '6px 12px' }} onClick={() => setViewMode('table')}>📋 טבלה</button>
              <button style={{ ...s.fbtn(viewMode === 'calendar'), padding: '6px 12px' }} onClick={() => setViewMode('calendar')}>📅 יומן</button>
@@ -513,8 +617,31 @@ export default function Home() {
                       </td>
                       <td style={s.td}>
                         <div style={{ display: 'flex', gap: 6 }}>
-                           <button style={{ ...s.btn, background: '#EFF6FF', color: '#1D4ED8', padding: '6px 8px', fontSize: 13 }} title="קבע פגישה" onClick={() => { setMeetingModalLead(lead); setManualDate(new Date().toISOString().split('T')[0]); }}>📅</button>
-                           <button style={{ ...s.btn, background: '#F0FDF4', color: '#15803D', padding: '6px 8px', fontSize: 13 }} title="שתף במייל" onClick={() => shareByEmail(lead)}>✉️</button>
+                            <button 
+                              style={{ ...s.btn, background: '#EFF6FF', color: '#1D4ED8', padding: '4px 8px', fontSize: 11 }} 
+                              title="ניהול פגישה" 
+                              onClick={() => { 
+                                setMeetingModalLead(lead);
+                                const existingDate = parseHebrewDate(lead.meeting_time);
+                                if (existingDate) {
+                                  setManualDate(existingDate.toISOString().split('T')[0]);
+                                  setManualTime(existingDate.toTimeString().split(' ')[0].substring(0, 5));
+                                } else {
+                                  setManualDate(new Date().toISOString().split('T')[0]);
+                                  setManualTime("10:00");
+                                }
+                              }}
+                            >
+                              📅 ניהול פגישה
+                            </button>
+                            
+                            <button 
+                              style={{ ...s.btn, background: '#F0FDF4', color: '#15803D', padding: '6px 8px', fontSize: 13 }} 
+                               title="שלח תזכורת במייל" 
+                               onClick={() => shareByEmail(lead)}
+                            >
+                              ✉️
+                            </button>
                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start', marginLeft: 8 }}>
                               <span style={{ fontSize: 10, color: '#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
                               <button style={{ ...s.deleteBtn, fontSize: 11 }} title="מחק ליד" onClick={(e) => { e.stopPropagation(); deleteLead(lead.id, lead.full_name); }}>🗑️ מחק</button>
@@ -667,7 +794,22 @@ export default function Home() {
                 <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שעה</label>
                 <input type="time" style={s.input} value={manualTime} onChange={e => setManualTime(e.target.value)} required />
               </div>
-              <button type="submit" style={{ ...s.btn, width: '100%', justifyContent: 'center', padding: 14, marginTop: 10 }}>אישור וקביעת פגישה</button>
+               <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                <button type="submit" style={{ ...s.btn, flex: 1, justifyContent: 'center', padding: 14 }}>שמור ב-CRM בלבד</button>
+                <button 
+                  type="button" 
+                  onClick={async (e) => {
+                    await handleScheduleMeeting(e as any);
+                    // The updated meeting time is needed for sync
+                    const formattedDate = manualDate.split('-').reverse().join('.');
+                    const updatedLead = { ...meetingModalLead, meeting_time: `${formattedDate} ${manualTime}` };
+                    addToCalendar(updatedLead);
+                  }}
+                  style={{ ...s.btn, flex: 1, background: '#7C3AED', justifyContent: 'center', padding: 14 }}
+                >
+                  שמור וסנכרן ל-Google
+                </button>
+              </div>
             </form>
           </div>
         </div>
