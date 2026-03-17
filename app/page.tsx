@@ -37,15 +37,18 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; 
 
 const s = {
   page:    { minHeight: '100vh', background: '#F8FAFC', fontFamily: "'Segoe UI', Arial, sans-serif", direction: 'rtl' as const },
-  header:  { background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '16px 32px', display: 'flex' as const, justifyContent: 'space-between', alignItems: 'center', position: 'sticky' as const, top: 0, zIndex: 10 },
-  h1:      { fontSize: 20, fontWeight: 700, color: '#0F172A', margin: 0 },
-  sub:     { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  header:  { background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 32px', display: 'flex' as const, justifyContent: 'space-between', alignItems: 'center', position: 'sticky' as const, top: 0, zIndex: 10 },
+  logoBox: { display: 'flex', alignItems: 'center', gap: 16 },
+  logoImg: { height: 48, width: 'auto', borderRadius: 4 },
+  h1:      { fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 },
+  sub:     { fontSize: 11, color: '#94A3B8', marginTop: 1 },
   btn:     { background: '#0F172A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
   main:    { maxWidth: 1400, margin: '0 auto', padding: '32px 24px' },
   grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 },
-  card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,.04)' },
+  card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,.04)', position: 'relative' as const, overflow: 'hidden' as const },
+  cardIcon: { position: 'absolute' as const, top: 18, left: 20, fontSize: 24, opacity: 0.15 },
   cl:      { fontSize: 12, color: '#64748B', marginBottom: 4 },
-  cv:      { fontSize: 32, fontWeight: 700, margin: 0 },
+  cv:      { fontSize: 28, fontWeight: 700, margin: 0 },
   filters: { display: 'flex' as const, gap: 12, marginBottom: 20, flexWrap: 'wrap' as const },
   input:   { flex: 1, minWidth: 200, border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fff' },
   fbtn:    (active: boolean): CSSProperties => ({ padding: '8px 14px', border: '1px solid', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: active ? '#0F172A' : '#fff', color: active ? '#fff' : '#475569', borderColor: active ? '#0F172A' : '#CBD5E1' }),
@@ -61,11 +64,14 @@ const s = {
   modal:   { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100, padding: 20 },
   modalContent: { background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', padding: 32, position: 'relative' as const },
   closeBtn: { position: 'absolute' as const, top: 20, left: 20, border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#64748B' },
-  notesArea: { width: '100%', minHeight: 80, border: '1px solid #E2E8F0', borderRadius: 8, padding: 12, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, marginTop: 8 },
+  notesArea: { width: '100%', minHeight: 100, border: '1px solid #2563EB', borderRadius: 8, padding: 12, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, outline: 'none', boxShadow: '0 0 0 2px rgba(37, 99, 235, 0.1)' },
+  notesBox: { display: 'flex', flexDirection: 'column', gap: 6, background: '#F8FAFC', padding: 8, borderRadius: 8, position: 'relative' as const, minWidth: 200 },
+  notesText: { fontSize: 12, color: '#475569', whiteSpace: 'pre-wrap', lineHeight: '1.5' },
+  editIcon: { cursor: 'pointer', color: '#64748B', fontSize: 14, transition: 'color 0.2s', alignSelf: 'flex-end' },
   docItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid #F1F5F9', borderRadius: 8, marginBottom: 8, fontSize: 13 },
   fileLink: { color: '#2563EB', textDecoration: 'none', fontWeight: 500 },
   deleteBtn: { background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 13, padding: '4px 8px', borderRadius: 4, transition: 'background 0.2s' },
-  saveNoteBtn: { border: 'none', background: '#2563EB', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', marginTop: 4, alignSelf: 'flex-start' },
+  actionBtn: { border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 },
 };
 
 export default function Home() {
@@ -81,8 +87,9 @@ export default function Home() {
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '' });
   const [uploading, setUploading] = useState(false);
   
-  // Notes temporary state
-  const [tempNotes, setTempNotes] = useState<Record<string, string>>({});
+  // Inline editing state
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [tempNoteText, setTempNoteText] = useState("");
 
   useEffect(() => { fetchLeads(); }, []);
 
@@ -103,6 +110,7 @@ export default function Home() {
        alert('שגיאה בעדכון');
     } else {
        setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
+       setEditingNoteId(null);
     }
   }
 
@@ -157,7 +165,6 @@ export default function Home() {
 
     try {
       setUploading(true);
-      const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
 
       // 1. Upload to Storage
@@ -183,7 +190,7 @@ export default function Home() {
       setLeadDocs(prev => [docRecord, ...prev]);
 
     } catch (err: any) {
-      alert('שגיאה בהעלאה: ' + err.message + '\n\nוודא שהגדרת Storage Policies ב-Supabase (ניתן להריץ את ה-SQL ששלחתי בבוט).');
+      alert('שגיאה בהעלאה: ' + err.message + '\n\nוודא שהגדרת Storage Policies ב-Supabase.');
     } finally {
       setUploading(false);
     }
@@ -205,9 +212,12 @@ export default function Home() {
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <div>
-          <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
-          <p style={s.sub}>ניהול לידים ולקוחות</p>
+        <div style={s.logoBox}>
+          <img src="/logo.png" alt="Admatenu" style={s.logoImg} onError={(e) => (e.currentTarget.style.display = 'none')} />
+          <div>
+            <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
+            <p style={s.sub}>ניהול לידים ולקוחות חכם</p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button style={s.btn} onClick={() => setManualModal(true)}>
@@ -220,12 +230,13 @@ export default function Home() {
       <main style={s.main}>
         <div style={s.grid}>
           {[
-            { label: 'סה"כ לידים', value: stats.total, color: '#0F172A' },
-            { label: 'לידים חדשים', value: stats.new, color: '#1D4ED8' },
-            { label: 'פגישות קבועות', value: stats.meetings, color: '#B45309' },
-            { label: 'לקוחות', value: stats.clients, color: '#065F46' },
+            { label: 'סה"כ לידים', value: stats.total, color: '#0F172A', icon: '👥' },
+            { label: 'לידים חדשים', value: stats.new, color: '#1D4ED8', icon: '✨' },
+            { label: 'פגישות קבועות', value: stats.meetings, color: '#B45309', icon: '📅' },
+            { label: 'לקוחות', value: stats.clients, color: '#065F46', icon: '✅' },
           ].map(c => (
             <div key={c.label} style={s.card}>
+              <span style={s.cardIcon}>{c.icon}</span>
               <p style={s.cl}>{c.label}</p>
               <p style={{ ...s.cv, color: c.color }}>{c.value}</p>
             </div>
@@ -265,27 +276,30 @@ export default function Home() {
                 <tr key={lead.id} onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
                   <td style={{ ...s.td, fontWeight: 700, color: '#0F172A' }}>{lead.full_name || '—'}</td>
                   <td style={{ ...s.td, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace' }}>{lead.phone}</td>
-                  <td style={{ ...s.td, maxWidth: 280 }}>
+                  <td style={{ ...s.td, maxWidth: 300 }}>
                     <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4', fontSize: 12 }}>{lead.summary_sentence || '—'}</div>
                   </td>
                   <td style={{ ...s.td, whiteSpace: 'nowrap' }}>{lead.meeting_time || '—'}</td>
-                  <td style={{ ...s.td, maxWidth: 250 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <textarea
-                        style={s.notesArea}
-                        placeholder="הוסף הערות סוכן..."
-                        value={tempNotes[lead.id] !== undefined ? tempNotes[lead.id] : (lead.agent_notes || '')}
-                        onChange={(e) => setTempNotes({ ...tempNotes, [lead.id]: e.target.value })}
-                      />
-                      {(tempNotes[lead.id] !== undefined && tempNotes[lead.id] !== lead.agent_notes) && (
-                        <button 
-                          style={s.saveNoteBtn}
-                          onClick={() => updateLeadField(lead.id, 'agent_notes', tempNotes[lead.id])}
-                        >
-                          💾 שמור הערה
-                        </button>
-                      )}
-                    </div>
+                  <td style={s.td}>
+                    {editingNoteId === lead.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+                        <textarea
+                          style={s.notesArea}
+                          autoFocus
+                          value={tempNoteText}
+                          onChange={(e) => setTempNoteText(e.target.value)}
+                        />
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button style={{ ...s.actionBtn, background: '#2563EB', color: '#fff' }} onClick={() => updateLeadField(lead.id, 'agent_notes', tempNoteText)}>שמור</button>
+                          <button style={{ ...s.actionBtn, background: '#E2E8F0', color: '#475569' }} onClick={() => setEditingNoteId(null)}>ביטול</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={s.notesBox} onClick={() => { setEditingNoteId(lead.id); setTempNoteText(lead.agent_notes || ""); }}>
+                        <span style={{ position: 'absolute', top: 6, left: 8, fontSize: 12 }}>✏️</span>
+                        <div style={s.notesText}>{lead.agent_notes || <i style={{ color: '#CBD5E1' }}>הוסף הערות...</i>}</div>
+                      </div>
+                    )}
                   </td>
                   <td style={s.td}>
                     <button style={{ ...s.btn, background: '#E2E8F0', color: '#0F172A', padding: '6px 12px', fontSize: 11 }} onClick={() => openDocModal(lead)}>
@@ -299,16 +313,8 @@ export default function Home() {
                   </td>
                   <td style={s.td}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                       <span style={{ fontSize: 10, color: '#94A3B8' }}>
-                         {new Date(lead.created_at).toLocaleDateString('he-IL')}
-                       </span>
-                       <button 
-                         style={s.deleteBtn} 
-                         title="מחק ליד"
-                         onClick={() => deleteLead(lead.id, lead.full_name)}
-                       >
-                         🗑️ מחק
-                       </button>
+                       <span style={{ fontSize: 10, color: '#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
+                       <button style={s.deleteBtn} title="מחק ליד" onClick={() => deleteLead(lead.id, lead.full_name)}>🗑️ מחק</button>
                     </div>
                   </td>
                 </tr>
@@ -335,7 +341,7 @@ export default function Home() {
               </div>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>סיכום ראשוני / פרטים</label>
-                <textarea style={{ ...s.notesArea, minHeight: 120 }} value={newLead.summary_sentence} onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})} placeholder="פרטים על ההלוואה, נכס, וכו'..." />
+                <textarea style={{ ...s.notesArea, minHeight: 120, border: '1px solid #E2E8F0', boxShadow: 'none' }} value={newLead.summary_sentence} onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})} placeholder="פרטים על ההלוואה..." />
               </div>
               <button type="submit" style={{ ...s.btn, width: '100%', justifyContent: 'center', padding: 14, marginTop: 10 }}>שמור ליד למערכת</button>
             </form>
