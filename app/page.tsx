@@ -617,7 +617,7 @@ export default function Home() {
                 onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                 disabled={uploading}
               >
-                <span>➕</span> {uploading ? (uploadProgress || 'מעלה קבצים...') : 'העלאת מסמכים (לבחור כמה יחד)'}
+                <span>➕</span> {uploading ? (uploadProgress || 'מעלה קבצים...') : 'העלאת מסמכים'}
               </button>
             </div>
 
