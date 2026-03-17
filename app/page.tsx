@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, CSSProperties } from 'react';
+import { useEffect, useState, useMemo, useRef, CSSProperties } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -114,6 +114,13 @@ export default function Home() {
   const [manualModal, setManualModal] = useState(false);
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '' });
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [debugStatus, setDebugStatus] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    window.onerror = (msg) => setDebugStatus(`Err: ${msg}`);
+  }, []);
 
   // Manual Meeting State
   const [meetingModalLead, setMeetingModalLead] = useState<Lead | null>(null);
@@ -148,18 +155,21 @@ export default function Home() {
   }
 
   async function deleteLead(id: string, name: string) {
+    console.log('Attempting to delete lead:', id, name);
     if (!confirm(`האם אתה בטוח שברצונך למחוק את הליד של "${name}"?`)) return;
 
     try {
       const { error } = await supabase.from('leads').delete().eq('id', id);
       if (error) {
-        console.error('Delete error:', error);
+        console.error('Delete error details:', error);
+        setDebugStatus(`Delete Error: ${error.message} (Code: ${error.code})`);
         alert('שגיאה במחיקת הליד: ' + error.message);
       } else {
         setLeads(prev => prev.filter(l => l.id !== id));
         alert('הליד נמחק בהצלחה.');
       }
     } catch (err: any) {
+      setDebugStatus(`Critical Delete Exception: ${err.message}`);
       alert('שגיאה: ' + err.message);
     }
   }
@@ -235,28 +245,66 @@ export default function Home() {
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !docModalLead) return;
+    const files = e.target.files;
+    if (!files || files.length === 0 || !docModalLead) return;
 
     try {
       setUploading(true);
-      const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage.from('lead-documents').upload(fileName, file);
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('lead-documents').getPublicUrl(fileName);
-      const { data: docRecord, error: dbError } = await supabase.from('documents').insert([{
-        lead_id: docModalLead.id,
-        file_name: file.name,
-        file_url: publicUrl,
-        content_type: file.type,
-        size_bytes: file.size
-      }]).select().single();
-      if (dbError) throw dbError;
-      setLeadDocs(prev => [docRecord, ...prev]);
+      
+      const uploadPromises = Array.from(files).map(async (file, index) => {
+        // Sanitize filename: ASCII only, no special chars for storage key
+        const safeName = file.name.replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII
+                                  .replace(/[\s\(\)\[\]\{\}]/g, '_'); // Replace spaces and brackets
+        const rnd = Math.random().toString(36).substring(2, 7);
+        const fileName = `${Date.now()}_${rnd}_${safeName || 'file'}`;
+        
+        console.log('Uploading file:', fileName);
+        const { error: uploadError } = await supabase.storage.from('lead-documents').upload(fileName, file);
+        if (uploadError) {
+          console.error('Upload error details:', uploadError);
+          setDebugStatus(`Storage Error: ${uploadError.message}`);
+          throw new Error(`נכשל בהעלאת ${file.name}: ${uploadError.message}`);
+        }
+        
+        const { data: { publicUrl } } = supabase.storage.from('lead-documents').getPublicUrl(fileName);
+        const { data: docRecord, error: dbError } = await supabase.from('documents').insert([{
+          lead_id: docModalLead.id,
+          file_name: file.name,
+          file_url: publicUrl,
+          content_type: file.type,
+          size_bytes: file.size
+        }]).select().single();
+        
+        if (dbError) throw new Error(`נכשל בשמירת ${file.name} בטבלה: ${dbError.message}`);
+        setUploadProgress(`הועלו ${index + 1} מתוך ${files.length}...`);
+        return docRecord;
+      });
+
+      const results = await Promise.allSettled(uploadPromises);
+      
+      const successfulDocs = results
+        .filter((r): r is PromiseFulfilledResult<LeadDoc> => r.status === 'fulfilled')
+        .map(r => r.value);
+      
+      if (successfulDocs.length > 0) {
+        setLeadDocs(prev => [...successfulDocs, ...prev]);
+        alert(`העלאה הושלמה: ${successfulDocs.length} קבצים הועלו בהצלחה.`);
+      }
+      
+      const errors = results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map(r => r.reason.message);
+      
+      if (errors.length > 0) {
+        alert('חלק מהקבצים לא הועלו:\n' + errors.join('\n'));
+      }
+
+      if (e.target) e.target.value = ''; // Reset input
     } catch (err: any) {
-      alert('שגיאה בהעלאה: ' + err.message);
+      alert('שגיאה כללית בהעלאה: ' + err.message);
     } finally {
       setUploading(false);
+      setUploadProgress("");
     }
   }
 
@@ -427,7 +475,7 @@ export default function Home() {
                            <button style={{ ...s.btn, background: '#F0FDF4', color: '#15803D', padding: '6px 8px', fontSize: 13 }} title="שתף במייל" onClick={() => shareByEmail(lead)}>✉️</button>
                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start', marginLeft: 8 }}>
                               <span style={{ fontSize: 10, color: '#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
-                              <button style={{ ...s.deleteBtn, fontSize: 11 }} title="מחק ליד" onClick={() => deleteLead(lead.id, lead.full_name)}>🗑️ מחק</button>
+                              <button style={{ ...s.deleteBtn, fontSize: 11 }} title="מחק ליד" onClick={(e) => { e.stopPropagation(); deleteLead(lead.id, lead.full_name); }}>🗑️ מחק</button>
                            </div>
                         </div>
                       </td>
@@ -515,10 +563,21 @@ export default function Home() {
             <p style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{docModalLead.phone}</p>
             
             <div style={{ marginBottom: 20 }}>
-              <label style={{ ...s.btn, width: 'fit-content' }}>
-                <span>⬆</span> {uploading ? 'מעלה קובץ...' : 'העלאת מסמך חדש'}
-                <input type="file" hidden onChange={handleFileUpload} disabled={uploading} />
-              </label>
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                style={{ display: 'none' }} 
+                multiple={true} 
+                onChange={handleFileUpload} 
+                disabled={uploading} 
+              />
+              <button 
+                style={{ ...s.btn, width: 'fit-content' }} 
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                disabled={uploading}
+              >
+                <span>➕</span> {uploading ? (uploadProgress || 'מעלה קבצים...') : 'העלאת מסמכים (לבחור כמה יחד)'}
+              </button>
             </div>
 
             <div style={{ minHeight: 100 }}>
