@@ -34,7 +34,6 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
   CALL_BACK_LATER: { label: 'לחזור מאוחר יותר 📞', color: '#7C3AED', bg: '#F5F3FF', dot: '#8B5CF6' },
   DOC_COLLECTION: { label: 'איסוף מסמכים 📂', color: '#0EA5E9', bg: '#F0F9FF', dot: '#0EA5E9' },
   MEETING_HELD: { label: 'התקיימה פגישה 🤝', color: '#059669', bg: '#ECFDF5', dot: '#10B981' },
-  IN_PROCESS: { label: 'בטיפול ⏳', color: '#4F46E5', bg: '#EEF2FF', dot: '#6366F1' },
   CLIENT: { label: 'אושר ✅', color: '#065F46', bg: '#ECFDF5', dot: '#10B981' },
   CANCELLED: { label: 'לא רלוונטי 🗑️', color: '#64748B', bg: '#F8FAFC', dot: '#94A3B8' },
 };
@@ -47,7 +46,7 @@ const s = {
   sub:     { fontSize: 11, color: '#94A3B8', marginTop: 1 },
   btn:     { background: '#0F172A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
   main:    { maxWidth: '100%', margin: '0 auto', padding: '24px 16px' },
-  grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(9, 1fr)', gap: 10, marginBottom: 28 },
+  grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(8, 1fr)', gap: 10, marginBottom: 28 },
   card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '12px 8px', boxShadow: '0 1px 3px rgba(0,0,0,.04)', position: 'relative' as const, overflow: 'hidden' as const },
   cardIcon: { position: 'absolute' as const, top: 8, left: 8, fontSize: 16, opacity: 0.15 },
   cl:      { fontSize: 10, color: '#64748B', marginBottom: 2, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' },
@@ -101,6 +100,55 @@ function parseHebrewDate(dateStr: string): Date | null {
   }
   return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
 }
+
+const ResponsiveStyles = () => (
+  <style dangerouslySetInnerHTML={{ __html: `
+    @media (max-width: 768px) {
+      .header-container {
+        flex-direction: column !important;
+        padding: 16px !important;
+        gap: 16px !important;
+        text-align: center !important;
+      }
+      .header-actions {
+        width: 100% !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+      .stats-card {
+        padding: 12px 8px !important;
+      }
+      .filter-bar {
+        padding: 12px !important;
+        gap: 8px !important;
+      }
+      .search-input {
+        flex: 1 1 100% !important;
+      }
+      .modal-container {
+        padding: 12px !important;
+      }
+      .modal-content {
+        padding: 20px !important;
+        width: 95% !important;
+      }
+      .calendar-day {
+        min-height: 80px !important;
+      }
+      .day-num {
+        font-size: 12px !important;
+      }
+      .meeting-item {
+        font-size: 8px !important;
+        padding: 2px 4px !important;
+      }
+    }
+  `}} />
+);
 
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -413,7 +461,6 @@ export default function Home() {
     held: leads.filter(l => l.status === 'MEETING_HELD').length,
     docs: leads.filter(l => l.status === 'DOC_COLLECTION').length,
     later: leads.filter(l => l.status === 'CALL_BACK_LATER').length,
-    process: leads.filter(l => l.status === 'IN_PROCESS').length,
     clients: leads.filter(l => l.status === 'CLIENT').length,
     cancelled: leads.filter(l => l.status === 'CANCELLED').length,
   }), [leads]);
@@ -464,7 +511,8 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(16px)', borderRadius: 24, padding: 48, width: '100%', maxWidth: 420, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
+        <ResponsiveStyles />
+        <div className="modal-content" style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(16px)', borderRadius: 24, padding: 48, width: '100%', maxWidth: 420, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 24 }}>🛡️</div>
           <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.025em' }}>כניסה למערכת</h1>
           <p style={{ color: '#94A3B8', fontSize: 16, marginBottom: 40 }}>אדמתנו ביתנו — CRM מאובטח</p>
@@ -511,14 +559,17 @@ export default function Home() {
 
   return (
     <div style={s.page}>
-      <header style={s.header}>
+      <ResponsiveStyles />
+      {/* Header */}
+      <header className="header-container" style={s.header}>
         <div style={s.logoBox}>
+          <div style={{ fontSize: 28 }}>🏠</div>
           <div>
             <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
-            <p style={s.sub}>מערכת לניהול לידים ולקוחות</p>
+            <p style={s.sub}>ניהול לידים ופגישות חכם</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button 
             style={{ ...s.btn, background: 'none', color: '#64748B', border: '1px solid #E2E8F0', padding: '6px 12px', fontSize: 12, gap: 8 }} 
             onClick={handleLogout}
@@ -538,19 +589,18 @@ export default function Home() {
       </header>
 
       <main style={s.main}>
-        <div style={s.grid}>
+        <div className="stats-grid" style={s.grid}>
           {[
             { label: 'סה"כ לידים', value: stats.total, color: '#0F172A', icon: '👥' },
             { label: 'לידים חדשים', value: stats.new, color: '#1D4ED8', icon: '✨' },
             { label: 'נקבעו פגישות', value: stats.meetings, color: '#B45309', icon: '📅' },
             { label: 'התקיימו פגישות', value: stats.held, color: '#059669', icon: '🤝' },
             { label: 'איסוף מסמכים', value: stats.docs, color: '#0EA5E9', icon: '📂' },
-            { label: 'בטיפול', value: stats.process, color: '#4F46E5', icon: '⏳' },
             { label: 'לחזור מאוחר יותר', value: stats.later, color: '#7C3AED', icon: '📞' },
             { label: 'אושרו', value: stats.clients, color: '#065F46', icon: '✅' },
             { label: 'לא רלוונטי', value: stats.cancelled, color: '#64748B', icon: '🗑️' },
           ].map(c => (
-            <div key={c.label} style={s.card}>
+            <div key={c.label} className="stats-card" style={s.card}>
               <span style={s.cardIcon}>{c.icon}</span>
               <p style={s.cl}>{c.label}</p>
               <p style={{ ...s.cv, color: c.color }}>{c.value}</p>
@@ -560,14 +610,15 @@ export default function Home() {
 
         {viewMode === 'table' ? (
           <>
-            <div style={s.filters}>
+            <div className="filter-bar" style={s.filters}>
               <input
+                className="search-input"
                 style={s.input}
                 placeholder="חיפוש לפי שם, טלפון, סיכום או הערות..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
-              {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'IN_PROCESS', 'CLIENT', 'CANCELLED'].map(st => (
+              {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
                 <button key={st} style={s.fbtn(filter === st)} onClick={() => setFilter(st)}>
                   {st === 'ALL' ? 'הכל' : STATUS_CONFIG[st]?.label || st}
                 </button>
@@ -713,11 +764,12 @@ export default function Home() {
         )}
       </main>
 
+      {/* Manual Add Lead Modal */}
       {manualModal && (
-        <div style={s.modal} onClick={() => setManualModal(false)}>
-          <div style={s.modalContent} onClick={e => e.stopPropagation()}>
+        <div className="modal-container" style={s.modal} onClick={() => setManualModal(false)}>
+          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
             <button style={s.closeBtn} onClick={() => setManualModal(false)}>✕</button>
-            <h2 style={{ marginBottom: 24 }}>הוספת ליד חדש למערכת</h2>
+            <h2 style={{ fontSize: 20, marginBottom: 24, paddingLeft: 30 }}>הוספת ליד חדש למערכת</h2>
             <form onSubmit={handleAddLead} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שם מלא</label>
@@ -737,9 +789,10 @@ export default function Home() {
         </div>
       )}
 
+      {/* Document Modal */}
       {docModalLead && (
-        <div style={s.modal} onClick={() => setDocModalLead(null)}>
-          <div style={s.modalContent} onClick={e => e.stopPropagation()}>
+        <div className="modal-container" style={s.modal} onClick={() => setDocModalLead(null)}>
+          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
             <button style={s.closeBtn} onClick={() => setDocModalLead(null)}>✕</button>
             <h2 style={{ marginBottom: 4 }}>מסמכים: {docModalLead.full_name}</h2>
             <p style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{docModalLead.phone}</p>
@@ -792,12 +845,12 @@ export default function Home() {
         </div>
       )}
 
+      {/* Schedule Meeting Modal */}
       {meetingModalLead && (
-        <div style={s.modal} onClick={() => setMeetingModalLead(null)}>
-          <div style={s.modalContent} onClick={e => e.stopPropagation()}>
+        <div className="modal-container" style={s.modal} onClick={() => setMeetingModalLead(null)}>
+          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
             <button style={s.closeBtn} onClick={() => setMeetingModalLead(null)}>✕</button>
-            <h2 style={{ marginBottom: 24 }}>קביעת פגישה ידנית</h2>
-            <p style={{ marginBottom: 20, fontSize: 14 }}>לקוח: <b>{meetingModalLead.full_name}</b></p>
+            <h2 style={{ fontSize: 20, marginBottom: 24, paddingLeft: 30 }}>קביעת פגישה ידנית עבור {meetingModalLead.full_name}</h2>
             <form onSubmit={handleScheduleMeeting} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>תאריך</label>
