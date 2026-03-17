@@ -38,8 +38,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; 
 const s = {
   page:    { minHeight: '100vh', background: '#F8FAFC', fontFamily: "'Segoe UI', Arial, sans-serif", direction: 'rtl' as const },
   header:  { background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 32px', display: 'flex' as const, justifyContent: 'space-between', alignItems: 'center', position: 'sticky' as const, top: 0, zIndex: 10 },
-  logoBox: { display: 'flex', alignItems: 'center', gap: 16 },
-  logoImg: { height: 48, width: 'auto', borderRadius: 4 },
+  logoBox: { display: 'flex', alignItems: 'center', gap: 12 },
   h1:      { fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 },
   sub:     { fontSize: 11, color: '#94A3B8', marginTop: 1 },
   btn:     { background: '#0F172A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
@@ -65,13 +64,13 @@ const s = {
   modalContent: { background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', padding: 32, position: 'relative' as const },
   closeBtn: { position: 'absolute' as const, top: 20, left: 20, border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#64748B' },
   notesArea: { width: '100%', minHeight: 100, border: '1px solid #2563EB', borderRadius: 8, padding: 12, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, outline: 'none', boxShadow: '0 0 0 2px rgba(37, 99, 235, 0.1)' },
-  notesBox: { display: 'flex', flexDirection: 'column', gap: 6, background: '#F8FAFC', padding: 8, borderRadius: 8, position: 'relative' as const, minWidth: 200 },
-  notesText: { fontSize: 12, color: '#475569', whiteSpace: 'pre-wrap', lineHeight: '1.5' },
-  editIcon: { cursor: 'pointer', color: '#64748B', fontSize: 14, transition: 'color 0.2s', alignSelf: 'flex-end' },
+  notesBox: { display: 'flex', flexDirection: 'column' as const, gap: 4, background: '#F8FAFC', padding: '10px 12px', borderRadius: 8, position: 'relative' as const, minWidth: 220, border: '1px solid #F1F5F9', cursor: 'pointer', transition: 'all 0.2s' },
+  notesText: { fontSize: 12, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.5' },
+  editIcon: { position: 'absolute' as const, top: 8, left: 10, fontSize: 14, color: '#94A3B8' },
   docItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid #F1F5F9', borderRadius: 8, marginBottom: 8, fontSize: 13 },
   fileLink: { color: '#2563EB', textDecoration: 'none', fontWeight: 500 },
   deleteBtn: { background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 13, padding: '4px 8px', borderRadius: 4, transition: 'background 0.2s' },
-  actionBtn: { border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 },
+  actionBtn: { border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'background 0.2s' },
 };
 
 export default function Home() {
@@ -213,7 +212,6 @@ export default function Home() {
     <div style={s.page}>
       <header style={s.header}>
         <div style={s.logoBox}>
-          <img src="/logo.png" alt="Admatenu" style={s.logoImg} onError={(e) => (e.currentTarget.style.display = 'none')} />
           <div>
             <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
             <p style={s.sub}>ניהול לידים ולקוחות חכם</p>
@@ -282,7 +280,7 @@ export default function Home() {
                   <td style={{ ...s.td, whiteSpace: 'nowrap' }}>{lead.meeting_time || '—'}</td>
                   <td style={s.td}>
                     {editingNoteId === lead.id ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 240 }}>
                         <textarea
                           style={s.notesArea}
                           autoFocus
@@ -290,13 +288,13 @@ export default function Home() {
                           onChange={(e) => setTempNoteText(e.target.value)}
                         />
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button style={{ ...s.actionBtn, background: '#2563EB', color: '#fff' }} onClick={() => updateLeadField(lead.id, 'agent_notes', tempNoteText)}>שמור</button>
+                          <button style={{ ...s.actionBtn, background: '#0F172A', color: '#fff' }} onClick={() => updateLeadField(lead.id, 'agent_notes', tempNoteText)}>שמור</button>
                           <button style={{ ...s.actionBtn, background: '#E2E8F0', color: '#475569' }} onClick={() => setEditingNoteId(null)}>ביטול</button>
                         </div>
                       </div>
                     ) : (
                       <div style={s.notesBox} onClick={() => { setEditingNoteId(lead.id); setTempNoteText(lead.agent_notes || ""); }}>
-                        <span style={{ position: 'absolute', top: 6, left: 8, fontSize: 12 }}>✏️</span>
+                        <span style={s.editIcon}>✏️</span>
                         <div style={s.notesText}>{lead.agent_notes || <i style={{ color: '#CBD5E1' }}>הוסף הערות...</i>}</div>
                       </div>
                     )}
