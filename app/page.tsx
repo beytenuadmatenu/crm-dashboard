@@ -24,6 +24,7 @@ type LeadDoc = {
   file_name: string;
   file_url: string;
   content_type: string;
+  size_bytes: number;
   created_at: string;
 };
 
@@ -308,6 +309,46 @@ export default function Home() {
     }
   }
 
+  async function deleteDocument(doc: LeadDoc) {
+    console.log('Deleting document:', doc);
+    setDebugStatus(`מנסה למחוק את: ${doc.file_name}...`);
+    
+    if (!confirm(`האם אתה בטוח שברצונך למחוק את המסמך "${doc.file_name}"?`)) {
+      setDebugStatus(null);
+      return;
+    }
+
+    try {
+      setUploading(true);
+      // Extract filename from URL (it's the last part)
+      const fileName = doc.file_url.split('/').pop();
+      console.log('Storage filename extracted:', fileName);
+      
+      if (fileName) {
+        const { error: storageErr } = await supabase.storage.from('lead-documents').remove([fileName]);
+        if (storageErr) console.warn('Storage removal warning (might already be deleted):', storageErr);
+      }
+      
+      const { error } = await supabase.from('documents').delete().eq('id', doc.id);
+      if (error) {
+        console.error('DB delete error:', error);
+        setDebugStatus(`DB Error: ${error.message}`);
+        throw error;
+      }
+      
+      console.log('Document deleted successfully');
+      setLeadDocs(prev => prev.filter(d => d.id !== doc.id));
+      setDebugStatus('מסמך נמחק בהצלחה');
+      setTimeout(() => setDebugStatus(null), 3000);
+    } catch (err: any) {
+      console.error('Critical delete error:', err);
+      setDebugStatus(`Error: ${err.message}`);
+      alert('שגיאה במחיקה: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const filtered = useMemo(() =>
     leads.filter(l =>
       (filter === 'ALL' || l.status === filter) &&
@@ -368,7 +409,7 @@ export default function Home() {
         <div style={s.logoBox}>
           <div>
             <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
-            <p style={s.sub}>ניהול לידים ולקוחות חכם</p>
+            <p style={s.sub}>מערכת לניהול לידים ולקוחות</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -586,8 +627,22 @@ export default function Home() {
               ) : (
                 leadDocs.map(doc => (
                   <div key={doc.id} style={s.docItem}>
-                    <a href={doc.file_url} target="_blank" style={s.fileLink}>{doc.file_name}</a>
-                    <span style={{ fontSize: 11, color: '#94A3B8' }}>{new Date(doc.created_at).toLocaleDateString()}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                      <span style={{ fontSize: 18 }}>📄</span>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <a href={doc.file_url} target="_blank" style={s.fileLink}>{doc.file_name}</a>
+                        <span style={{ fontSize: 10, color: '#94A3B8' }}>
+                          {(doc.size_bytes / 1024).toFixed(1)}KB • {new Date(doc.created_at).toLocaleDateString('he-IL')}
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#94A3B8' }} 
+                      onClick={(e) => { e.stopPropagation(); deleteDocument(doc); }}
+                      title="מחק מסמך"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 ))
               )}

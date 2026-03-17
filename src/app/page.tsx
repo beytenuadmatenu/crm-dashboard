@@ -123,7 +123,7 @@ export default function Home() {
       <header style={s.header}>
         <div>
           <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
-          <p style={s.sub}>ניהול לידים ולקוחות</p>
+          <p style={s.sub}>מערכת לניהול לידים ולקוחות</p>
         </div>
           <button
             onClick={injectTestLead}
