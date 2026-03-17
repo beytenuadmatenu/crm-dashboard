@@ -203,17 +203,18 @@ export default function Home() {
   }
 
   function shareByEmail(lead: Lead) {
+    const recipient = "admateinu.beitenu@gmail.com";
     const subject = encodeURIComponent(`פרטי פגישת ייעוץ - אדמתנו ביתנו - ${lead.full_name}`);
     const body = encodeURIComponent(`שלום ${lead.full_name},
-
-אנו שמחים לאשר את פגישת הייעוץ שלך עם "אדמתנו ביתנו - הבית הפיננסי".
-
-הפגישה נקבעה ל: ${lead.meeting_time}.
-
-נשמח לראותך!
-בברכה,
-ספיר - אדמתנו ביתנו משכנתאות`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+ 
+ אנו שמחים לאשר את פגישת הייעוץ שלך עם "אדמתנו ביתנו - הבית הפיננסי".
+ 
+ הפגישה נקבעה ל: ${lead.meeting_time}.
+ 
+ נשמח לראותך!
+ בברכה,
+ ספיר - אדמתנו ביתנו משכנתאות`);
+    window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
   }
 
   async function handleAddLead(e: React.FormEvent) {
