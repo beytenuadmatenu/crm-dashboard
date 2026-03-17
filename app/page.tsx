@@ -85,7 +85,8 @@ const s = {
 };
 
 function parseHebrewDate(dateStr: string): Date | null {
-  if (!dateStr || dateStr === '—') return null;
+  if (!dateStr || dateStr === '—' || dateStr === 'בוטל') return null;
+  // Support "DD.MM.YYYY" or any string containing it
   const match = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
   if (!match) return null;
   const [_, d, m, y] = match;
@@ -113,6 +114,11 @@ export default function Home() {
   const [manualModal, setManualModal] = useState(false);
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '' });
   const [uploading, setUploading] = useState(false);
+
+  // Manual Meeting State
+  const [meetingModalLead, setMeetingModalLead] = useState<Lead | null>(null);
+  const [manualDate, setManualDate] = useState("");
+  const [manualTime, setManualTime] = useState("10:00");
   
   // Inline editing state
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -142,19 +148,61 @@ export default function Home() {
   }
 
   async function deleteLead(id: string, name: string) {
-    const confirmText = prompt(`אתה עומד למחוק את הליד של "${name}". כדי לאשר, הקלד את המילה DELETE:`);
-    if (confirmText !== 'DELETE') {
-      if (confirmText !== null) alert('מחיקה לא אושרה. וודא שהקלדת DELETE באותיות גדולות.');
-      return;
-    }
+    if (!confirm(`האם אתה בטוח שברצונך למחוק את הליד של "${name}"?`)) return;
 
-    const { error } = await supabase.from('leads').delete().eq('id', id);
-    if (error) {
-      alert('שגיאה במחיקת הליד: ' + error.message);
-    } else {
-      setLeads(prev => prev.filter(l => l.id !== id));
-      alert('הליד נמחק בהצלחה.');
+    try {
+      const { error } = await supabase.from('leads').delete().eq('id', id);
+      if (error) {
+        console.error('Delete error:', error);
+        alert('שגיאה במחיקת הליד: ' + error.message);
+      } else {
+        setLeads(prev => prev.filter(l => l.id !== id));
+        alert('הליד נמחק בהצלחה.');
+      }
+    } catch (err: any) {
+      alert('שגיאה: ' + err.message);
     }
+  }
+
+  async function handleScheduleMeeting(e: React.FormEvent) {
+    e.preventDefault();
+    if (!meetingModalLead || !manualDate) return;
+
+    try {
+      const [y, m, d] = manualDate.split('-');
+      const dateObj = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+      const daysHe = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+      const dayName = daysHe[dateObj.getDay()];
+      
+      const formattedTime = `יום ${dayName} ${d}.${m}.${y} בשעה ${manualTime}`;
+      
+      const { error } = await supabase.from('leads').update({
+        meeting_time: formattedTime,
+        status: 'MEETING_SCHEDULED'
+      }).eq('id', meetingModalLead.id);
+
+      if (error) throw error;
+      
+      setLeads(prev => prev.map(l => l.id === meetingModalLead.id ? { ...l, meeting_time: formattedTime, status: 'MEETING_SCHEDULED' } : l));
+      setMeetingModalLead(null);
+      alert('הפגישה נקבעה בהצלחה!');
+    } catch (err: any) {
+      alert('שגיאה בקביעת פגישה: ' + err.message);
+    }
+  }
+
+  function shareByEmail(lead: Lead) {
+    const subject = encodeURIComponent(`פרטי פגישת ייעוץ - אדמתנו ביתנו - ${lead.full_name}`);
+    const body = encodeURIComponent(`שלום ${lead.full_name},
+
+אנו שמחים לאשר את פגישת הייעוץ שלך עם "אדמתנו ביתנו - הבית הפיננסי".
+
+הפגישה נקבעה ל: ${lead.meeting_time}.
+
+נשמח לראותך!
+בברכה,
+ספיר - אדמתנו ביתנו משכנתאות`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 
   async function handleAddLead(e: React.FormEvent) {
@@ -374,9 +422,13 @@ export default function Home() {
                         </select>
                       </td>
                       <td style={s.td}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                           <span style={{ fontSize: 10, color: '#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
-                           <button style={s.deleteBtn} title="מחק ליד" onClick={() => deleteLead(lead.id, lead.full_name)}>🗑️ מחק</button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                           <button style={{ ...s.btn, background: '#EFF6FF', color: '#1D4ED8', padding: '6px 8px', fontSize: 13 }} title="קבע פגישה" onClick={() => { setMeetingModalLead(lead); setManualDate(new Date().toISOString().split('T')[0]); }}>📅</button>
+                           <button style={{ ...s.btn, background: '#F0FDF4', color: '#15803D', padding: '6px 8px', fontSize: 13 }} title="שתף במייל" onClick={() => shareByEmail(lead)}>✉️</button>
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start', marginLeft: 8 }}>
+                              <span style={{ fontSize: 10, color: '#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
+                              <button style={{ ...s.deleteBtn, fontSize: 11 }} title="מחק ליד" onClick={() => deleteLead(lead.id, lead.full_name)}>🗑️ מחק</button>
+                           </div>
                         </div>
                       </td>
                     </tr>
@@ -481,6 +533,27 @@ export default function Home() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {meetingModalLead && (
+        <div style={s.modal} onClick={() => setMeetingModalLead(null)}>
+          <div style={s.modalContent} onClick={e => e.stopPropagation()}>
+            <button style={s.closeBtn} onClick={() => setMeetingModalLead(null)}>✕</button>
+            <h2 style={{ marginBottom: 24 }}>קביעת פגישה ידנית</h2>
+            <p style={{ marginBottom: 20, fontSize: 14 }}>לקוח: <b>{meetingModalLead.full_name}</b></p>
+            <form onSubmit={handleScheduleMeeting} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>תאריך</label>
+                <input type="date" style={s.input} value={manualDate} onChange={e => setManualDate(e.target.value)} required />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שעה</label>
+                <input type="time" style={s.input} value={manualTime} onChange={e => setManualTime(e.target.value)} required />
+              </div>
+              <button type="submit" style={{ ...s.btn, width: '100%', justifyContent: 'center', padding: 14, marginTop: 10 }}>אישור וקביעת פגישה</button>
+            </form>
           </div>
         </div>
       )}
