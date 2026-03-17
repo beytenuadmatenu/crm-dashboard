@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { Phone, Calendar, Clock, User, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { useEffect, useState, useMemo, CSSProperties } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 type Lead = {
   id: string;
@@ -14,132 +18,212 @@ type Lead = {
   status: string;
 };
 
+const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
+  NEW_LEAD:          { label: 'ליד חדש',      bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6' },
+  MEETING_SCHEDULED: { label: 'פגישה קבועה',  bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B' },
+  IN_PROCESS:        { label: 'בטיפול',        bg: '#FAF5FF', color: '#7E22CE', dot: '#A855F7' },
+  CLIENT:            { label: 'לקוח ✓',        bg: '#ECFDF5', color: '#065F46', dot: '#10B981' },
+  CANCELLED:         { label: 'בוטל',           bg: '#FEF2F2', color: '#991B1B', dot: '#EF4444' },
+};
+
+const s = {
+  page:    { minHeight: '100vh', background: '#F8FAFC', fontFamily: "'Segoe UI', Arial, sans-serif", direction: 'rtl' as const },
+  header:  { background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '16px 32px', display: 'flex' as const, justifyContent: 'space-between', alignItems: 'center', position: 'sticky' as const, top: 0, zIndex: 10 },
+  h1:      { fontSize: 20, fontWeight: 700, color: '#0F172A', margin: 0 },
+  sub:     { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  btn:     { background: '#0F172A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  main:    { maxWidth: 1200, margin: '0 auto', padding: '32px 24px' },
+  grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 },
+  card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,.04)' },
+  cl:      { fontSize: 12, color: '#64748B', marginBottom: 4 },
+  cv:      { fontSize: 32, fontWeight: 700, margin: 0 },
+  filters: { display: 'flex' as const, gap: 12, marginBottom: 20, flexWrap: 'wrap' as const },
+  input:   { flex: 1, minWidth: 200, border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fff' },
+  fbtn:    (active: boolean): CSSProperties => ({ padding: '8px 14px', border: '1px solid', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: active ? '#0F172A' : '#fff', color: active ? '#fff' : '#475569', borderColor: active ? '#0F172A' : '#CBD5E1' }),
+  table:   { width: '100%', borderCollapse: 'collapse' as const, background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)', border: '1px solid #E2E8F0' },
+  th:      { padding: '12px 18px', textAlign: 'right' as const, fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: 1, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' },
+  td:      { padding: '14px 18px', fontSize: 13, color: '#334155', borderBottom: '1px solid #F1F5F9', verticalAlign: 'middle' as const },
+  badge:   (s: string): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: STATUS_CONFIG[s]?.bg || '#F1F5F9', color: STATUS_CONFIG[s]?.color || '#64748B' }),
+  dot:     (s: string): CSSProperties => ({ width: 6, height: 6, borderRadius: '50%', background: STATUS_CONFIG[s]?.dot || '#94A3B8' }),
+  sel:     { border: '1px solid #E2E8F0', borderRadius: 8, padding: '6px 10px', fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' },
+  empty:   { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '64px 24px', textAlign: 'center' as const, color: '#94A3B8', fontSize: 15 },
+  spin:    { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 },
+};
+
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
+  useEffect(() => { fetchLeads(); }, []);
 
   async function fetchLeads() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
+      console.log('Connecting to Supabase at:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+      const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Supabase Error Details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        alert('שגיאה בחיבור למסד הנתונים: ' + error.message);
+      }
       setLeads(data || []);
-    } catch (error) {
-      console.error('Error fetching leads:', error);
+    } catch (err: any) {
+      console.error('Unexpected Error:', err);
+      alert('שגיאה בלתי צפויה: ' + err.message);
     } finally {
       setLoading(false);
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'NEW_LEAD':
-        return <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">ליד חדש</span>;
-      case 'MEETING_SCHEDULED':
-        return <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">נקבעה פגישה</span>;
-      case 'IN_PROCESS':
-        return <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200">בטיפול</span>;
-      case 'CLIENT':
-        return <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200 flex items-center gap-1"><CheckCircle className="w-4 h-4"/> לקוח</span>;
-      case 'CANCELLED':
-        return <span className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200 flex items-center gap-1"><XCircle className="w-4 h-4"/> בוטל</span>;
-      default:
-        return <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200">לא ידוע</span>;
+  async function injectTestLead() {
+    const testLead = {
+      full_name: 'ישראל ישראלי (טסט)',
+      phone: '0501234567',
+      summary_sentence: 'ליד לדוגמה לבדיקת מערכת',
+      meeting_time: 'היום ב-10:00',
+      status: 'NEW_LEAD'
+    };
+    
+    console.log('Injecting test lead...');
+    const { data, error } = await supabase.from('leads').insert([testLead]);
+    if (error) {
+      console.error('Injection Error:', error);
+      alert('שגיאה בהזרקת ליד: ' + error.message);
+    } else {
+      alert('ליד טסט הוזרק בהצלחה!');
+      fetchLeads();
     }
-  };
+  }
+
+  async function updateStatus(id: string, newStatus: string) {
+    const { error } = await supabase.from('leads').update({ status: newStatus }).eq('id', id);
+    if (error) {
+       console.error('Update Status Error:', error);
+       alert('שגיאה בעדכון הסטטוס');
+    } else {
+       setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
+    }
+  }
+
+  const filtered = useMemo(() =>
+    leads.filter(l =>
+      (filter === 'ALL' || l.status === filter) &&
+      (search === '' || [l.full_name, l.phone, l.summary_sentence].some(v => (v || '').includes(search)))
+    ), [leads, filter, search]);
+
+  const stats = useMemo(() => ({
+    total: leads.length,
+    new: leads.filter(l => l.status === 'NEW_LEAD').length,
+    meetings: leads.filter(l => l.status === 'MEETING_SCHEDULED').length,
+    clients: leads.filter(l => l.status === 'CLIENT').length,
+  }), [leads]);
 
   return (
-    <main className="max-w-7xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-10">
+    <div style={s.page}>
+      {/* Header */}
+      <header style={s.header}>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">ניהול לידים</h1>
-          <p className="text-gray-500 mt-2">מעקב וניהול פניות מהבוט בוואטסאפ של אדמתנו ביתנו</p>
+          <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
+          <p style={s.sub}>ניהול לידים ולקוחות</p>
         </div>
-        <button 
-          onClick={fetchLeads}
-          className="bg-gray-900 text-white px-5 py-2.5 rounded-lg shadow hover:bg-gray-800 transition font-medium"
-        >
-          רענן נתונים
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={injectTestLead}
+            style={{ ...s.btn, background: '#fff', color: '#0F172A', border: '1px solid #E2E8F0' }}
+          >
+            🧪 הזרק ליד טסט
+          </button>
+          <button style={s.btn} onClick={fetchLeads}>↻ רענן</button>
         </div>
-      ) : leads.length === 0 ? (
-        <div className="bg-white rounded-xl shadow border border-gray-100 p-12 text-center">
-          <p className="text-gray-500 text-lg">אין לידים עדיין. כשלידים יכנסו דרך הבוט הם יופיעו כאן אוטומטית.</p>
-        </div>
-      ) : (
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {leads.map((lead) => (
-            <div key={lead.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
-              <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="bg-gray-200 p-2 rounded-full">
-                    <User className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <h2 className="text-lg font-bold text-gray-900">{lead.full_name || 'לקוח לא ידוע'}</h2>
-                </div>
-                {getStatusBadge(lead.status)}
-              </div>
-              
-              <div className="p-5 space-y-4">
-                <div className="flex items-start gap-3">
-                  <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{lead.phone}</p>
-                    <p className="text-xs text-gray-500">מספר מזהה</p>
-                  </div>
-                </div>
+      </header>
 
-                {lead.meeting_time && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{lead.meeting_time}</p>
-                      <p className="text-xs text-gray-500">מועד פגישה מתוכנן</p>
-                    </div>
-                  </div>
-                )}
-
-                {lead.summary_sentence && (
-                  <div className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-700 leading-relaxed">{lead.summary_sentence}</p>
-                      <p className="text-xs text-gray-500 mt-1">סיכום שיחה נתפס ע"י הבוט</p>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex items-start gap-3 pt-2">
-                  <Clock className="w-4 h-4 text-gray-400" />
-                  <p className="text-xs text-gray-400">
-                    נוצר: {new Date(lead.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-4 bg-gray-50 flex gap-2 border-t border-gray-100">
-                 {/* כפתורים פשוטים לשלב הראשון - רק דמו לעתיד, בהמשך ייפתח מסך מלא */}
-                 <button className="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
-                    פרחים ומסמכים
-                 </button>
-              </div>
+      <main style={s.main}>
+        {/* Stats */}
+        <div style={s.grid}>
+          {[
+            { label: 'סה"כ לידים', value: stats.total, color: '#0F172A' },
+            { label: 'לידים חדשים', value: stats.new, color: '#1D4ED8' },
+            { label: 'פגישות קבועות', value: stats.meetings, color: '#B45309' },
+            { label: 'לקוחות', value: stats.clients, color: '#065F46' },
+          ].map(c => (
+            <div key={c.label} style={s.card}>
+              <p style={s.cl}>{c.label}</p>
+              <p style={{ ...s.cv, color: c.color }}>{c.value}</p>
             </div>
           ))}
         </div>
-      )}
-    </main>
+
+        {/* Filters */}
+        <div style={s.filters}>
+          <input
+            style={s.input}
+            placeholder="חיפוש לפי שם, טלפון, סיכום..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'CLIENT', 'CANCELLED'].map(st => (
+            <button key={st} style={s.fbtn(filter === st)} onClick={() => setFilter(st)}>
+              {st === 'ALL' ? 'הכל' : STATUS_CONFIG[st]?.label || st}
+            </button>
+          ))}
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div style={s.spin}><div>טוען...</div></div>
+        ) : filtered.length === 0 ? (
+          <div style={s.empty}>אין לידים עדיין. ברגע שספיר תקבע פגישה — הם יופיעו כאן.</div>
+        ) : (
+          <table style={s.table}>
+            <thead>
+              <tr>
+                {['שם', 'טלפון', 'סיכום שיחה', 'מועד פגישה', 'סטטוס', 'עדכון', 'נוצר'].map(h => (
+                  <th key={h} style={s.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(lead => (
+                <tr key={lead.id} onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                  <td style={{ ...s.td, fontWeight: 600 }}>{lead.full_name || '—'}</td>
+                  <td style={{ ...s.td, direction: 'ltr', textAlign: 'right' }}>{lead.phone}</td>
+                  <td style={{ ...s.td, maxWidth: 280 }}>
+                    <span style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                      {lead.summary_sentence || '—'}
+                    </span>
+                  </td>
+                  <td style={s.td}>{lead.meeting_time || '—'}</td>
+                  <td style={s.td}>
+                    <span style={s.badge(lead.status)}>
+                      <span style={s.dot(lead.status)}></span>
+                      {STATUS_CONFIG[lead.status]?.label || lead.status}
+                    </span>
+                  </td>
+                  <td style={s.td}>
+                    <select style={s.sel} value={lead.status} onChange={e => updateStatus(lead.id, e.target.value)}>
+                      <option value="NEW_LEAD">ליד חדש</option>
+                      <option value="MEETING_SCHEDULED">פגישה קבועה</option>
+                      <option value="IN_PROCESS">בטיפול</option>
+                      <option value="CLIENT">לקוח ✓</option>
+                      <option value="CANCELLED">בוטל</option>
+                    </select>
+                  </td>
+                  <td style={{ ...s.td, fontSize: 11, color: '#94A3B8', whiteSpace: 'nowrap' }}>
+                    {new Date(lead.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </main>
+    </div>
   );
 }

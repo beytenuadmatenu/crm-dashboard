@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Admatenu Beitenu CRM',
-  description: 'CRM Dashboard for Mortgage Leads',
+  description: 'ניהול לידים ולקוחות - אדמתנו ביתנו משכנתאות',
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body className={`${inter.className} bg-gray-50 text-gray-900 min-h-screen`}>
+      <body className={inter.className}>
         {children}
       </body>
     </html>
