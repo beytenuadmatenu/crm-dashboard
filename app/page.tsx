@@ -204,7 +204,7 @@ export default function Home() {
 
   function shareByEmail(lead: Lead) {
     const recipient = "admateinu.beitenu@gmail.com";
-    const subject = encodeURIComponent(`פרטי פגישת ייעוץ - אדמתנו ביתנו - ${lead.full_name}`);
+    const subject = encodeURIComponent(`פגישת יעוץ עם ${lead.full_name} ${lead.meeting_time}`);
     const body = encodeURIComponent(`שלום ${lead.full_name},
  
  אנו שמחים לאשר את פגישת הייעוץ שלך עם "אדמתנו ביתנו - הבית הפיננסי".
