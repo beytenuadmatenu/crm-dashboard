@@ -4,13 +4,12 @@ A premium lead management system for **Admatenu Beitenu Mortgages**.
 
 ## ✨ Features
 
-- **Lead Overview**: Real-time dashboard with key metrics.
-- **AI Summaries**: Direct view of the WhatsApp bot's conversation analysis.
-- **Agent Notes**: Explicitly save custom notes for each lead.
-- **Document Management**: Upload and organize client documents (IDs, paystubs, etc.) via Supabase Storage.
-- **Manual Entry**: Add leads directly to the CRM when they come from non-WhatsApp sources.
-- **Secure Deletion**: Double-confirmation for deleting leads.
-- **RTL Support**: Native Hebrew support throughout the interface.
+- **Interactive Diary (יומן)**: Switch between table and calendar views to track scheduled meetings.
+- **Bulk Document Uploads**: Select and internalize multiple client documents at once with progress tracking.
+- **Agent Workspace**: Professional inline editor for agent notes with automatic saving.
+- **Manual Lead Management**: Add, edit, and safely delete leads from any source.
+- **Email Sharing**: One-click professional email templates for meeting confirmations.
+- **RTL Support**: Native Hebrew support and premium styling throughout.
 
 ## 🛠️ Built With
 
