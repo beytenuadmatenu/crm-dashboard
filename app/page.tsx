@@ -64,6 +64,8 @@ const s = {
   notesArea: { width: '100%', minHeight: 80, border: '1px solid #E2E8F0', borderRadius: 8, padding: 12, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, marginTop: 8 },
   docItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid #F1F5F9', borderRadius: 8, marginBottom: 8, fontSize: 13 },
   fileLink: { color: '#2563EB', textDecoration: 'none', fontWeight: 500 },
+  deleteBtn: { background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 13, padding: '4px 8px', borderRadius: 4, transition: 'background 0.2s' },
+  saveNoteBtn: { border: 'none', background: '#2563EB', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', marginTop: 4, alignSelf: 'flex-start' },
 };
 
 export default function Home() {
@@ -78,6 +80,9 @@ export default function Home() {
   const [manualModal, setManualModal] = useState(false);
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '' });
   const [uploading, setUploading] = useState(false);
+  
+  // Notes temporary state
+  const [tempNotes, setTempNotes] = useState<Record<string, string>>({});
 
   useEffect(() => { fetchLeads(); }, []);
 
@@ -101,11 +106,26 @@ export default function Home() {
     }
   }
 
+  async function deleteLead(id: string, name: string) {
+    const confirmText = prompt(`אתה עומד למחוק את הליד של "${name}". כדי לאשר, הקלד את המילה DELETE:`);
+    if (confirmText !== 'DELETE') {
+      if (confirmText !== null) alert('מחיקה לא אושרה. וודא שהקלדת DELETE באותיות גדולות.');
+      return;
+    }
+
+    const { error } = await supabase.from('leads').delete().eq('id', id);
+    if (error) {
+      alert('שגיאה במחיקת הליד: ' + error.message);
+    } else {
+      setLeads(prev => prev.filter(l => l.id !== id));
+      alert('הליד נמחק בהצלחה.');
+    }
+  }
+
   async function handleAddLead(e: React.FormEvent) {
     e.preventDefault();
     if (!newLead.phone) return alert('חובה להזין טלפון');
     
-    // Format phone to local if needed
     let formattedPhone = newLead.phone.replace(/\D/g, '');
     if (formattedPhone.startsWith('972')) formattedPhone = '0' + formattedPhone.substring(3);
     else if (!formattedPhone.startsWith('0')) formattedPhone = '0' + formattedPhone;
@@ -138,7 +158,7 @@ export default function Home() {
     try {
       setUploading(true);
       const fileExt = file.name.split('.').pop();
-      const fileName = `${docModalLead.id}/${Math.random()}.${fileExt}`;
+      const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
 
       // 1. Upload to Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -163,7 +183,7 @@ export default function Home() {
       setLeadDocs(prev => [docRecord, ...prev]);
 
     } catch (err: any) {
-      alert('שגיאה בהעלאה: ' + err.message + '. וודא שהגדרת Storage Bucket בשם "lead-documents" ב-Supabase.');
+      alert('שגיאה בהעלאה: ' + err.message + '\n\nוודא שהגדרת Storage Policies ב-Supabase (ניתן להריץ את ה-SQL ששלחתי בבוט).');
     } finally {
       setUploading(false);
     }
@@ -198,7 +218,6 @@ export default function Home() {
       </header>
 
       <main style={s.main}>
-        {/* Stats */}
         <div style={s.grid}>
           {[
             { label: 'סה"כ לידים', value: stats.total, color: '#0F172A' },
@@ -213,7 +232,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Filters */}
         <div style={s.filters}>
           <input
             style={s.input}
@@ -228,7 +246,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Table */}
         <div style={s.tableWrapper}>
         {loading ? (
           <div style={s.spin}><div>טוען...</div></div>
@@ -238,7 +255,7 @@ export default function Home() {
           <table style={s.table}>
             <thead>
               <tr>
-                {['שם', 'טלפון', 'סיכום המערכת', 'מועד פגישה', 'הערות סוכן', 'מסמכים', 'סטטוס', 'נוצר'].map(h => (
+                {['שם', 'טלפון', 'סיכום המערכת', 'מועד פגישה', 'הערות סוכן', 'מסמכים', 'סטטוס', 'ניהול'].map(h => (
                   <th key={h} style={s.th}>{h}</th>
                 ))}
               </tr>
@@ -248,20 +265,30 @@ export default function Home() {
                 <tr key={lead.id} onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
                   <td style={{ ...s.td, fontWeight: 700, color: '#0F172A' }}>{lead.full_name || '—'}</td>
                   <td style={{ ...s.td, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace' }}>{lead.phone}</td>
-                  <td style={{ ...s.td, maxWidth: 300 }}>
+                  <td style={{ ...s.td, maxWidth: 280 }}>
                     <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4', fontSize: 12 }}>{lead.summary_sentence || '—'}</div>
                   </td>
                   <td style={{ ...s.td, whiteSpace: 'nowrap' }}>{lead.meeting_time || '—'}</td>
                   <td style={{ ...s.td, maxWidth: 250 }}>
-                    <textarea
-                      style={s.notesArea}
-                      placeholder="הוסף הערות סוכן..."
-                      defaultValue={lead.agent_notes}
-                      onBlur={(e) => updateLeadField(lead.id, 'agent_notes', e.target.value)}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <textarea
+                        style={s.notesArea}
+                        placeholder="הוסף הערות סוכן..."
+                        value={tempNotes[lead.id] !== undefined ? tempNotes[lead.id] : (lead.agent_notes || '')}
+                        onChange={(e) => setTempNotes({ ...tempNotes, [lead.id]: e.target.value })}
+                      />
+                      {(tempNotes[lead.id] !== undefined && tempNotes[lead.id] !== lead.agent_notes) && (
+                        <button 
+                          style={s.saveNoteBtn}
+                          onClick={() => updateLeadField(lead.id, 'agent_notes', tempNotes[lead.id])}
+                        >
+                          💾 שמור הערה
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td style={s.td}>
-                    <button style={{ ...s.btn, background: '#E2E8F0', color: '#0F172A', padding: '6px 12px' }} onClick={() => openDocModal(lead)}>
+                    <button style={{ ...s.btn, background: '#E2E8F0', color: '#0F172A', padding: '6px 12px', fontSize: 11 }} onClick={() => openDocModal(lead)}>
                       📂 מסמכים
                     </button>
                   </td>
@@ -270,8 +297,19 @@ export default function Home() {
                       {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
                     </select>
                   </td>
-                  <td style={{ ...s.td, fontSize: 11, color: '#94A3B8' }}>
-                    {new Date(lead.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                  <td style={s.td}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                       <span style={{ fontSize: 10, color: '#94A3B8' }}>
+                         {new Date(lead.created_at).toLocaleDateString('he-IL')}
+                       </span>
+                       <button 
+                         style={s.deleteBtn} 
+                         title="מחק ליד"
+                         onClick={() => deleteLead(lead.id, lead.full_name)}
+                       >
+                         🗑️ מחק
+                       </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -281,7 +319,6 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Manual Lead Modal */}
       {manualModal && (
         <div style={s.modal} onClick={() => setManualModal(false)}>
           <div style={s.modalContent} onClick={e => e.stopPropagation()}>
@@ -298,7 +335,7 @@ export default function Home() {
               </div>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>סיכום ראשוני / פרטים</label>
-                <textarea style={s.notesArea} value={newLead.summary_sentence} onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})} placeholder="פרטים על ההלוואה, נכס, וכו'..." />
+                <textarea style={{ ...s.notesArea, minHeight: 120 }} value={newLead.summary_sentence} onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})} placeholder="פרטים על ההלוואה, נכס, וכו'..." />
               </div>
               <button type="submit" style={{ ...s.btn, width: '100%', justifyContent: 'center', padding: 14, marginTop: 10 }}>שמור ליד למערכת</button>
             </form>
@@ -306,7 +343,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Documents Modal */}
       {docModalLead && (
         <div style={s.modal} onClick={() => setDocModalLead(null)}>
           <div style={s.modalContent} onClick={e => e.stopPropagation()}>
@@ -315,7 +351,7 @@ export default function Home() {
             <p style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{docModalLead.phone}</p>
             
             <div style={{ marginBottom: 20 }}>
-              <label style={s.btn}>
+              <label style={{ ...s.btn, width: 'fit-content' }}>
                 <span>⬆</span> {uploading ? 'מעלה קובץ...' : 'העלאת מסמך חדש'}
                 <input type="file" hidden onChange={handleFileUpload} disabled={uploading} />
               </label>
