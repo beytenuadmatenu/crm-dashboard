@@ -16,6 +16,7 @@ type Lead = {
   summary_sentence: string;
   meeting_time: string;
   status: string;
+  city?: string;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
@@ -87,7 +88,8 @@ export default function Home() {
       phone: '0501234567',
       summary_sentence: 'ליד לדוגמה לבדיקת מערכת',
       meeting_time: 'היום ב-10:00',
-      status: 'NEW_LEAD'
+      status: 'NEW_LEAD',
+      city: 'תל אביב'
     };
     
     const { data, error } = await supabase.from('leads').insert([testLead]);
@@ -107,7 +109,7 @@ export default function Home() {
   const filtered = useMemo(() =>
     leads.filter(l =>
       (filter === 'ALL' || l.status === filter) &&
-      (search === '' || [l.full_name, l.phone, l.summary_sentence].some(v => v?.includes(search)))
+      (search === '' || [l.full_name, l.phone, l.city, l.summary_sentence].some(v => v?.includes(search)))
     ), [leads, filter, search]);
 
   const stats = useMemo(() => ({
@@ -174,7 +176,7 @@ export default function Home() {
           <table style={s.table}>
             <thead>
               <tr>
-                {['שם', 'טלפון', 'סיכום שיחה', 'מועד פגישה', 'סטטוס', 'עדכון', 'נוצר'].map(h => (
+                {['שם', 'טלפון', 'יישוב', 'סיכום שיחה', 'מועד פגישה', 'סטטוס', 'עדכון', 'נוצר'].map(h => (
                   <th key={h} style={s.th}>{h}</th>
                 ))}
               </tr>
@@ -184,6 +186,7 @@ export default function Home() {
                 <tr key={lead.id} onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
                   <td style={{ ...s.td, fontWeight: 600 }}>{lead.full_name || '—'}</td>
                   <td style={{ ...s.td, direction: 'ltr', textAlign: 'right' }}>{lead.phone}</td>
+                  <td style={s.td}>{lead.city || '—'}</td>
                   <td style={{ ...s.td, maxWidth: 280 }}>
                     <span style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
                       {lead.summary_sentence || '—'}

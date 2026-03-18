@@ -17,6 +17,7 @@ type Lead = {
   meeting_time: string;
   status: string;
   agent_notes: string;
+  city?: string;
 };
 
 type LeadDoc = {
@@ -162,9 +163,11 @@ export default function Home() {
 
   // Modals state
   const [docModalLead, setDocModalLead] = useState<Lead | null>(null);
+  const [meetingModalLead, setMeetingModalLead] = useState<Lead | null>(null);
+  const [editModalLead, setEditModalLead] = useState<Lead | null>(null);
   const [leadDocs, setLeadDocs] = useState<LeadDoc[]>([]);
   const [manualModal, setManualModal] = useState(false);
-  const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '' });
+  const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '', city: '' });
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [debugStatus, setDebugStatus] = useState<string | null>(null);
@@ -175,7 +178,6 @@ export default function Home() {
   }, []);
 
   // Manual Meeting State
-  const [meetingModalLead, setMeetingModalLead] = useState<Lead | null>(null);
   const [manualDate, setManualDate] = useState("");
   const [manualTime, setManualTime] = useState("10:00");
   
@@ -219,6 +221,34 @@ export default function Home() {
     }
   }
 
+  async function updateStatus(id: string, newStatus: string) {
+    await supabase.from('leads').update({ status: newStatus }).eq('id', id);
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
+  }
+
+  async function handleUpdateLead(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editModalLead) return;
+    
+    const { error } = await supabase
+      .from('leads')
+      .update({
+        full_name: editModalLead.full_name,
+        phone: editModalLead.phone,
+        city: editModalLead.city,
+        summary_sentence: editModalLead.summary_sentence,
+        agent_notes: editModalLead.agent_notes
+      })
+      .eq('id', editModalLead.id);
+
+    if (error) {
+      alert('שגיאה בעדכון הליד: ' + error.message);
+    } else {
+      setLeads(prev => prev.map(l => l.id === editModalLead.id ? editModalLead : l));
+      setEditModalLead(null);
+      alert('הליד עודכן בהצלחה!');
+    }
+  }
   async function updateLeadField(id: string, field: string, value: any) {
     const { error } = await supabase.from('leads').update({ [field]: value }).eq('id', id);
     if (error) {
@@ -332,7 +362,7 @@ export default function Home() {
     if (error) alert('שגיאה: ' + error.message);
     else {
       setManualModal(false);
-      setNewLead({ full_name: '', phone: '', summary_sentence: '' });
+      setNewLead({ full_name: '', phone: '', summary_sentence: '', city: '' });
       fetchLeads();
     }
   }
@@ -451,7 +481,7 @@ export default function Home() {
   const filtered = useMemo(() =>
     leads.filter(l =>
       (filter === 'ALL' || l.status === filter) &&
-      (search === '' || [l.full_name, l.phone, l.summary_sentence, l.agent_notes].some(v => (v || '').includes(search)))
+      (search === '' || [l.full_name, l.phone, l.city, l.summary_sentence, l.agent_notes].some(v => v?.includes(search)))
     ), [leads, filter, search]);
 
   const stats = useMemo(() => ({
@@ -634,7 +664,7 @@ export default function Home() {
               <table style={s.table}>
                 <thead>
                   <tr>
-                    {['שם', 'טלפון', 'סיכום המערכת', 'מועד פגישה', 'הערות סוכן', 'מסמכים', 'סטטוס', 'ניהול'].map(h => (
+                    {['שם', 'טלפון', 'יישוב', 'סיכום המערכת', 'מועד פגישה', 'הערות סוכן', 'מסמכים', 'סטטוס', 'ניהול'].map(h => (
                       <th key={h} style={s.th}>{h}</th>
                     ))}
                   </tr>
@@ -644,6 +674,7 @@ export default function Home() {
                     <tr key={lead.id} onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
                       <td style={{ ...s.td, fontWeight: 700, color: '#0F172A' }}>{lead.full_name || '—'}</td>
                       <td style={{ ...s.td, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace' }}>{lead.phone}</td>
+                      <td style={s.td}>{lead.city || '—'}</td>
                       <td style={{ ...s.td, width: '30%', minWidth: 250 }}>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', fontSize: 12 }}>{lead.summary_sentence || '—'}</div>
                       </td>
@@ -680,10 +711,9 @@ export default function Home() {
                         </select>
                       </td>
                       <td style={s.td}>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                             <button 
-                              style={{ ...s.btn, background: '#EFF6FF', color: '#1D4ED8', padding: '4px 8px', fontSize: 11 }} 
-                              title="ניהול פגישה" 
+                              style={{ ...s.actionBtn, background: '#F1F5F9', color: '#64748B' }} 
                               onClick={() => { 
                                 setMeetingModalLead(lead);
                                 const existingDate = parseHebrewDate(lead.meeting_time);
@@ -695,10 +725,17 @@ export default function Home() {
                                   setManualTime("10:00");
                                 }
                               }}
-                            >
-                              📅 ניהול פגישה
-                            </button>
-                            
+                                title="ניהול פגישה"
+                              >
+                                📅
+                              </button>
+                               <button 
+                                style={{ ...s.actionBtn, background: '#F8FAFC', color: '#64748B' }} 
+                                onClick={() => setEditModalLead(lead)}
+                                title="ערוך פרטיי ליד"
+                              >
+                                ✏️
+                              </button>
                             <button 
                               style={{ ...s.btn, background: '#F0FDF4', color: '#15803D', padding: '6px 8px', fontSize: 13 }} 
                                title="שלח תזכורת במייל" 
@@ -780,6 +817,10 @@ export default function Home() {
                 <input style={s.input} value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} placeholder="0501234567" required />
               </div>
               <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>יישוב</label>
+                <input style={s.input} value={newLead.city} onChange={e => setNewLead({...newLead, city: e.target.value})} placeholder="תל אביב, ירושלים..." />
+              </div>
+              <div>
                 <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>סיכום ראשוני / פרטים</label>
                 <textarea style={{ ...s.notesArea, minHeight: 120, border: '1px solid #E2E8F0' }} value={newLead.summary_sentence} onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})} placeholder="פרטים על ההלוואה..." />
               </div>
@@ -841,6 +882,42 @@ export default function Home() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Modal */}
+      {editModalLead && (
+        <div className="modal-container" style={s.modal} onClick={() => setEditModalLead(null)}>
+          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
+            <button style={s.closeBtn} onClick={() => setEditModalLead(null)}>✕</button>
+            <h2 style={{ fontSize: 20, marginBottom: 24, paddingLeft: 30 }}>עריכת פרטי ליד</h2>
+            <form onSubmit={handleUpdateLead} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שם מלא</label>
+                <input style={s.input} value={editModalLead.full_name} onChange={e => setEditModalLead({...editModalLead, full_name: e.target.value})} placeholder="שם הלקוח" />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>טלפון</label>
+                <input style={s.input} value={editModalLead.phone} onChange={e => setEditModalLead({...editModalLead, phone: e.target.value})} placeholder="0501234567" required />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>יישוב</label>
+                <input style={s.input} value={editModalLead.city} onChange={e => setEditModalLead({...editModalLead, city: e.target.value})} placeholder="תל אביב, ירושלים..." />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>סיכום המערכת</label>
+                <textarea style={{ ...s.notesArea, minHeight: 100, border: '1px solid #E2E8F0' }} value={editModalLead.summary_sentence} onChange={e => setEditModalLead({...editModalLead, summary_sentence: e.target.value})} placeholder="סיכום המערכת..." />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>הערות סוכן</label>
+                <textarea style={{ ...s.notesArea, minHeight: 100, border: '1px solid #E2E8F0' }} value={editModalLead.agent_notes} onChange={e => setEditModalLead({...editModalLead, agent_notes: e.target.value})} placeholder="הערות נוספות..." />
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                <button type="submit" style={{ ...s.btn, flex: 1, justifyContent: 'center', padding: 14, background: '#0F172A', color: '#fff' }}>שמור שינויים</button>
+                <button type="button" onClick={() => setEditModalLead(null)} style={{ ...s.btn, flex: 1, justifyContent: 'center', padding: 14, background: '#E2E8F0', color: '#475569' }}>ביטול</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
