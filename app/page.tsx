@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef, CSSProperties } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { 
+  Users, LayoutDashboard, KanbanSquare, Settings, LogOut, 
+  Search, Plus, RefreshCw, Send, Calendar, Edit, FileText, 
+  Trash2, Mail, MapPin, Phone, CheckCircle2, AlertCircle, X
+} from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,68 +34,21 @@ type LeadDoc = {
   created_at: string;
 };
 
-const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, dot: string }> = {
-  NEW_LEAD: { label: 'ליד חדש ✨', color: '#1D4ED8', bg: '#EFF6FF', dot: '#3B82F6' },
-  MEETING_SCHEDULED: { label: 'נקבעה פגישה 📅', color: '#B45309', bg: '#FFFBEB', dot: '#F59E0B' },
-  CALL_BACK_LATER: { label: 'לחזור מאוחר יותר 📞', color: '#7C3AED', bg: '#F5F3FF', dot: '#8B5CF6' },
-  DOC_COLLECTION: { label: 'איסוף מסמכים 📂', color: '#0EA5E9', bg: '#F0F9FF', dot: '#0EA5E9' },
-  MEETING_HELD: { label: 'התקיימה פגישה 🤝', color: '#059669', bg: '#ECFDF5', dot: '#10B981' },
-  CLIENT: { label: 'אושר ✅', color: '#065F46', bg: '#ECFDF5', dot: '#10B981' },
-  CANCELLED: { label: 'לא רלוונטי 🗑️', color: '#64748B', bg: '#F8FAFC', dot: '#94A3B8' },
+const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, dot: string, border: string }> = {
+  NEW_LEAD: { label: 'ליד חדש', color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500', border: 'border-blue-200' },
+  MEETING_SCHEDULED: { label: 'נקבעה פגישה', color: 'text-amber-700', bg: 'bg-amber-50', dot: 'bg-amber-500', border: 'border-amber-200' },
+  CALL_BACK_LATER: { label: 'לחזור אח"כ', color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500', border: 'border-purple-200' },
+  DOC_COLLECTION: { label: 'איסוף מסמכים', color: 'text-sky-700', bg: 'bg-sky-50', dot: 'bg-sky-500', border: 'border-sky-200' },
+  MEETING_HELD: { label: 'התקיימה פגישה', color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500', border: 'border-emerald-200' },
+  CLIENT: { label: 'אושר', color: 'text-green-800', bg: 'bg-green-100', dot: 'bg-green-600', border: 'border-green-300' },
+  CANCELLED: { label: 'לא רלוונטי', color: 'text-slate-600', bg: 'bg-slate-100', dot: 'bg-slate-400', border: 'border-slate-200' },
 };
 
-const s = {
-  page:    { minHeight: '100vh', background: '#F8FAFC', fontFamily: "'Segoe UI', Arial, sans-serif", direction: 'rtl' as const },
-  header:  { background: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 32px', display: 'flex' as const, justifyContent: 'space-between', alignItems: 'center', position: 'sticky' as const, top: 0, zIndex: 10 },
-  logoBox: { display: 'flex', alignItems: 'center', gap: 12 },
-  h1:      { fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 },
-  sub:     { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-  btn:     { background: '#0F172A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
-  main:    { maxWidth: '100%', margin: '0 auto', padding: '24px 16px' },
-  grid:    { display: 'grid' as const, gridTemplateColumns: 'repeat(8, 1fr)', gap: 10, marginBottom: 28 },
-  card:    { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '12px 8px', boxShadow: '0 1px 3px rgba(0,0,0,.04)', position: 'relative' as const, overflow: 'hidden' as const },
-  cardIcon: { position: 'absolute' as const, top: 8, left: 8, fontSize: 16, opacity: 0.15 },
-  cl:      { fontSize: 10, color: '#64748B', marginBottom: 2, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' },
-  cv:      { fontSize: 18, fontWeight: 700, margin: 0 },
-  filters: { display: 'flex' as const, gap: 8, marginBottom: 24, flexWrap: 'nowrap' as const, alignItems: 'center', overflowX: 'auto' as const, paddingBottom: 8 },
-  input:   { flex: '0 0 250px', border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fff' },
-  fbtn:    (active: boolean): CSSProperties => ({ padding: '8px 12px', border: '1px solid', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: active ? '#0F172A' : '#fff', color: active ? '#fff' : '#475569', borderColor: active ? '#0F172A' : '#CBD5E1', whiteSpace: 'nowrap' as const }),
-  tableWrapper: { background: '#fff', borderRadius: 12, overflowX: 'auto' as const, overflowY: 'auto' as const, maxHeight: 'calc(100vh - 220px)', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(0,0,0,.05)' },
-  table:   { width: '100%', borderCollapse: 'collapse' as const },
-  th:      { padding: '12px 10px', textAlign: 'right' as const, fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: 1, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', position: 'sticky' as const, top: 0, zIndex: 2 },
-  td:      { padding: '12px 10px', fontSize: 12, color: '#334155', borderBottom: '1px solid #F1F5F9', verticalAlign: 'top' as const },
-  badge:   (s: string): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: STATUS_CONFIG[s]?.bg || '#F1F5F9', color: STATUS_CONFIG[s]?.color || '#64748B' }),
-  dot:     (s: string): CSSProperties => ({ width: 6, height: 6, borderRadius: '50%', background: STATUS_CONFIG[s]?.dot || '#94A3B8' }),
-  sel:     { border: '1px solid #E2E8F0', borderRadius: 8, padding: '6px 10px', fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' },
-  empty:   { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '64px 24px', textAlign: 'center' as const, color: '#94A3B8', fontSize: 15 },
-  spin:    { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 },
-  modal:   { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100, padding: 20 },
-  modalContent: { background: '#fff', borderRadius: 16, width: '100%', maxWidth: 600, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', padding: 32, position: 'relative' as const },
-  closeBtn: { position: 'absolute' as const, top: 20, left: 20, border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#64748B' },
-  notesArea: { width: '100%', minHeight: 100, border: '1px solid #2563EB', borderRadius: 8, padding: 12, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, outline: 'none' },
-  notesBox: { display: 'flex', flexDirection: 'column' as const, gap: 4, background: '#F8FAFC', padding: '8px 10px 8px 28px', borderRadius: 8, position: 'relative' as const, minWidth: 160, border: '1px solid #F1F5F9', cursor: 'pointer', transition: 'all 0.2s' },
-  notesText: { fontSize: 12, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.5' },
-  editIcon: { position: 'absolute' as const, top: 10, left: 10, fontSize: 14, color: '#94A3B8' },
-  docItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid #F1F5F9', borderRadius: 8, marginBottom: 8, fontSize: 13 },
-  fileLink: { color: '#2563EB', textDecoration: 'none', fontWeight: 500 },
-  deleteBtn: { background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 13, padding: '4px 8px', borderRadius: 4, transition: 'background 0.2s' },
-  actionBtn: { border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'background 0.2s' },
-  
-  // Calendar styles
-  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: '#E2E8F0', borderRadius: 12, overflow: 'hidden', border: '1px solid #E2E8F0' },
-  calendarDay: { background: '#fff', minHeight: 120, padding: 10, display: 'flex', flexDirection: 'column' as const, transition: 'background 0.2s' },
-  dayHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  dayNum: { fontSize: 14, fontWeight: 600, color: '#64748B' },
-  isToday: { background: '#EFF6FF' },
-  meetingItem: { padding: '4px 8px', borderRadius: 6, fontSize: 10, marginBottom: 4, cursor: 'pointer', transition: 'all 0.2s', overflow: 'hidden', whiteSpace: 'nowrap' as const, textOverflow: 'ellipsis' },
-  calendarNav: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 },
-  navTitle: { fontSize: 18, fontWeight: 700, minWidth: 160, textAlign: 'center' as const },
-  navBtn: { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 18, color: '#475569' },
-};
+// Kanban Pipeline Columns logic
+const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'MEETING_HELD', 'DOC_COLLECTION', 'CLIENT'];
 
 function parseHebrewDate(dateStr: string): Date | null {
   if (!dateStr || dateStr === '—' || dateStr === 'בוטל') return null;
-  // Support "DD.MM.YYYY" or any string containing it
   const match = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
   if (!match) return null;
   const [_, d, m, y] = match;
@@ -102,88 +60,29 @@ function parseHebrewDate(dateStr: string): Date | null {
   return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
 }
 
-const ResponsiveStyles = () => (
-  <style dangerouslySetInnerHTML={{ __html: `
-    @media (max-width: 768px) {
-      .header-container {
-        flex-direction: column !important;
-        padding: 16px !important;
-        gap: 16px !important;
-        text-align: center !important;
-      }
-      .header-actions {
-        width: 100% !important;
-        justify-content: center !important;
-        flex-wrap: wrap !important;
-      }
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-      }
-      .stats-card {
-        padding: 12px 8px !important;
-      }
-      .filter-bar {
-        padding: 12px !important;
-        gap: 8px !important;
-      }
-      .search-input {
-        flex: 1 1 100% !important;
-      }
-      .modal-container {
-        padding: 12px !important;
-      }
-      .modal-content {
-        padding: 20px !important;
-        width: 95% !important;
-      }
-      .calendar-day {
-        min-height: 80px !important;
-      }
-      .day-num {
-        font-size: 12px !important;
-      }
-      .meeting-item {
-        font-size: 8px !important;
-        padding: 2px 4px !important;
-      }
-    }
-  `}} />
-);
-
-export default function Home() {
+export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   
-  // Calendar state
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  // Modals state
-  const [docModalLead, setDocModalLead] = useState<Lead | null>(null);
-  const [meetingModalLead, setMeetingModalLead] = useState<Lead | null>(null);
-  const [editModalLead, setEditModalLead] = useState<Lead | null>(null);
+  // Modals & Profile
+  const [profileLead, setProfileLead] = useState<Lead | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'docs' | 'meetings'>('overview');
   const [leadDocs, setLeadDocs] = useState<LeadDoc[]>([]);
   const [manualModal, setManualModal] = useState(false);
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '', city: '' });
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
-  const [debugStatus, setDebugStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    window.onerror = (msg) => setDebugStatus(`Err: ${msg}`);
-  }, []);
 
   // Manual Meeting State
   const [manualDate, setManualDate] = useState("");
   const [manualTime, setManualTime] = useState("10:00");
   
-  // Inline editing state
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [tempNoteText, setTempNoteText] = useState("");
+  // Kanban Drag & Drop
+  const [draggedLead, setDraggedLead] = useState<string | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
@@ -221,86 +120,46 @@ export default function Home() {
     }
   }
 
-  async function updateStatus(id: string, newStatus: string) {
-    await supabase.from('leads').update({ status: newStatus }).eq('id', id);
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
-  }
-
-  async function handleUpdateLead(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editModalLead) return;
-    
-    const { error } = await supabase
-      .from('leads')
-      .update({
-        full_name: editModalLead.full_name,
-        phone: editModalLead.phone,
-        city: editModalLead.city,
-        summary_sentence: editModalLead.summary_sentence,
-        agent_notes: editModalLead.agent_notes
-      })
-      .eq('id', editModalLead.id);
-
-    if (error) {
-      alert('שגיאה בעדכון הליד: ' + error.message);
-    } else {
-      setLeads(prev => prev.map(l => l.id === editModalLead.id ? editModalLead : l));
-      setEditModalLead(null);
-      alert('הליד עודכן בהצלחה!');
-    }
-  }
   async function updateLeadField(id: string, field: string, value: any) {
     const { error } = await supabase.from('leads').update({ [field]: value }).eq('id', id);
     if (error) {
        alert('שגיאה בעדכון');
     } else {
        setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
-       setEditingNoteId(null);
+       if (profileLead?.id === id) {
+         setProfileLead(prev => prev ? { ...prev, [field]: value } : prev);
+       }
     }
   }
 
   async function deleteLead(id: string, name: string) {
-    console.log('Attempting to delete lead:', id, name);
     if (!confirm(`האם אתה בטוח שברצונך למחוק את הליד של "${name}"?`)) return;
-
     try {
       const { error } = await supabase.from('leads').delete().eq('id', id);
-      if (error) {
-        console.error('Delete error details:', error);
-        setDebugStatus(`Delete Error: ${error.message} (Code: ${error.code})`);
-        alert('שגיאה במחיקת הליד: ' + error.message);
-      } else {
+      if (error) alert('שגיאה במחיקת הליד: ' + error.message);
+      else {
         setLeads(prev => prev.filter(l => l.id !== id));
+        setProfileLead(null);
         alert('הליד נמחק בהצלחה.');
       }
     } catch (err: any) {
-      setDebugStatus(`Critical Delete Exception: ${err.message}`);
       alert('שגיאה: ' + err.message);
     }
   }
 
   async function handleScheduleMeeting(e: React.FormEvent) {
     e.preventDefault();
-    if (!meetingModalLead || !manualDate) return;
+    if (!profileLead || !manualDate) return;
 
     try {
       const [y, m, d] = manualDate.split('-');
       const dateObj = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
       const daysHe = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
       const dayName = daysHe[dateObj.getDay()];
-      
       const formattedTime = `יום ${dayName} ${d}.${m}.${y} בשעה ${manualTime}`;
       
-      const { error } = await supabase.from('leads').update({
-        meeting_time: formattedTime,
-        status: 'MEETING_SCHEDULED'
-      }).eq('id', meetingModalLead.id);
-
-      if (error) throw error;
-      
-      setLeads(prev => prev.map(l => l.id === meetingModalLead.id ? { ...l, meeting_time: formattedTime, status: 'MEETING_SCHEDULED' } : l));
-      setMeetingModalLead(null);
-      // Automatically prompt for sync if it wasn't a direct "Save & Sync" click (handled by button text usually)
+      await updateLeadField(profileLead.id, 'meeting_time', formattedTime);
+      await updateLeadField(profileLead.id, 'status', 'MEETING_SCHEDULED');
       alert('הפגישה נקבעה בהצלחה במערכת!');
     } catch (err: any) {
       alert('שגיאה בקביעת פגישה: ' + err.message);
@@ -310,38 +169,17 @@ export default function Home() {
   function shareByEmail(lead: Lead) {
     const recipient = "admateinu.beitenu@gmail.com";
     const subject = encodeURIComponent(`תזכורת פגישה: ${lead.full_name} ${lead.meeting_time}`);
-    const body = encodeURIComponent(`שלום רב,
- 
- להלן פרטי פגישת ייעוץ חדשה שתואמה במערכת:
- 
- שם הלקוח: ${lead.full_name}
- טלפון: ${lead.phone}
- מועד הפגישה: ${lead.meeting_time}
- 
- סיכום ופרטים:
- ${lead.summary_sentence || 'אין סיכום זמין'}
- 
- בברכה,
- מערכת CRM - אדמתנו ביתנו`);
-    
-    // Using Gmail Web Compose link
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${body}`;
-    window.open(gmailUrl, '_blank');
+    const body = encodeURIComponent(`שלום רב,\n\n להלן פרטי פגישת ייעוץ:\nשם הלקוח: ${lead.full_name}\nטלפון: ${lead.phone}\nמועד: ${lead.meeting_time}\n\nסיכום:\n${lead.summary_sentence}`);
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${body}`, '_blank');
   }
 
   function addToCalendar(lead: Lead) {
     const startDate = parseHebrewDate(lead.meeting_time);
     if (!startDate) return alert('לא ניתן לקבוע פגישה ביומן ללא תאריך תקין.');
-    
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Default 1 hour
-    
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); 
     const format = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const dates = `${format(startDate)}/${format(endDate)}`;
-    
-    const details = `טלפון: ${lead.phone}\nסיכום: ${lead.summary_sentence || ''}`;
-    const guestEmail = "admateinu.beitenu@gmail.com";
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`פגישה: ${lead.full_name}`)}&dates=${dates}&details=${encodeURIComponent(details)}&add=${encodeURIComponent(guestEmail)}&sf=true&output=xml`;
-    
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`פגישה: ${lead.full_name}`)}&dates=${dates}&details=${encodeURIComponent(`טלפון: ${lead.phone}\nסיכום: ${lead.summary_sentence}`)}&add=admateinu.beitenu@gmail.com&sf=true&output=xml`;
     window.open(url, '_blank');
   }
 
@@ -367,71 +205,36 @@ export default function Home() {
     }
   }
 
-  async function openDocModal(lead: Lead) {
-    setDocModalLead(lead);
-    setUploading(false);
-    const { data, error } = await supabase.from('documents').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false });
-    if (!error) setLeadDocs(data || []);
+  async function fetchDocs(leadId: string) {
+    const { data } = await supabase.from('documents').select('*').eq('lead_id', leadId).order('created_at', { ascending: false });
+    setLeadDocs(data || []);
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
-    if (!files || files.length === 0 || !docModalLead) return;
+    if (!files || files.length === 0 || !profileLead) return;
 
     try {
       setUploading(true);
-      
       const uploadPromises = Array.from(files).map(async (file, index) => {
-        // Sanitize filename: ASCII only, no special chars for storage key
-        const safeName = file.name.replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII
-                                  .replace(/[\s\(\)\[\]\{\}]/g, '_'); // Replace spaces and brackets
-        const rnd = Math.random().toString(36).substring(2, 7);
-        const fileName = `${Date.now()}_${rnd}_${safeName || 'file'}`;
+        const safeName = file.name.replace(/[^\x00-\x7F]/g, '').replace(/[\s\(\)\[\]\{\}]/g, '_');
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${safeName}`;
         
-        console.log('Uploading file:', fileName);
         const { error: uploadError } = await supabase.storage.from('lead-documents').upload(fileName, file);
-        if (uploadError) {
-          console.error('Upload error details:', uploadError);
-          setDebugStatus(`Storage Error: ${uploadError.message}`);
-          throw new Error(`נכשל בהעלאת ${file.name}: ${uploadError.message}`);
-        }
+        if (uploadError) throw new Error(`נכשל בהעלאת ${file.name}`);
         
         const { data: { publicUrl } } = supabase.storage.from('lead-documents').getPublicUrl(fileName);
-        const { data: docRecord, error: dbError } = await supabase.from('documents').insert([{
-          lead_id: docModalLead.id,
-          file_name: file.name,
-          file_url: publicUrl,
-          content_type: file.type,
-          size_bytes: file.size
+        const { data: docRecord } = await supabase.from('documents').insert([{
+          lead_id: profileLead.id, file_name: file.name, file_url: publicUrl, content_type: file.type, size_bytes: file.size
         }]).select().single();
         
-        if (dbError) throw new Error(`נכשל בשמירת ${file.name} בטבלה: ${dbError.message}`);
         setUploadProgress(`הועלו ${index + 1} מתוך ${files.length}...`);
         return docRecord;
       });
 
       const results = await Promise.allSettled(uploadPromises);
-      
-      const successfulDocs = results
-        .filter((r): r is PromiseFulfilledResult<LeadDoc> => r.status === 'fulfilled')
-        .map(r => r.value);
-      
-      if (successfulDocs.length > 0) {
-        setLeadDocs(prev => [...successfulDocs, ...prev]);
-        // alert removed as per user request
-      }
-      
-      const errors = results
-        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map(r => r.reason.message);
-      
-      if (errors.length > 0) {
-        alert('חלק מהקבצים לא הועלו:\n' + errors.join('\n'));
-      }
-
-      if (e.target) e.target.value = ''; // Reset input
-    } catch (err: any) {
-      alert('שגיאה כללית בהעלאה: ' + err.message);
+      fetchDocs(profileLead.id);
+      if (e.target) e.target.value = '';
     } finally {
       setUploading(false);
       setUploadProgress("");
@@ -439,44 +242,34 @@ export default function Home() {
   }
 
   async function deleteDocument(doc: LeadDoc) {
-    console.log('Deleting document:', doc);
-    setDebugStatus(`מנסה למחוק את: ${doc.file_name}...`);
-    
-    if (!confirm(`האם אתה בטוח שברצונך למחוק את המסמך "${doc.file_name}"?`)) {
-      setDebugStatus(null);
-      return;
-    }
-
+    if (!confirm(`למחוק את "${doc.file_name}"?`)) return;
     try {
-      setUploading(true);
-      // Extract filename from URL (it's the last part)
       const fileName = doc.file_url.split('/').pop();
-      console.log('Storage filename extracted:', fileName);
-      
-      if (fileName) {
-        const { error: storageErr } = await supabase.storage.from('lead-documents').remove([fileName]);
-        if (storageErr) console.warn('Storage removal warning (might already be deleted):', storageErr);
-      }
-      
-      const { error } = await supabase.from('documents').delete().eq('id', doc.id);
-      if (error) {
-        console.error('DB delete error:', error);
-        setDebugStatus(`DB Error: ${error.message}`);
-        throw error;
-      }
-      
-      console.log('Document deleted successfully');
+      if (fileName) await supabase.storage.from('lead-documents').remove([fileName]);
+      await supabase.from('documents').delete().eq('id', doc.id);
       setLeadDocs(prev => prev.filter(d => d.id !== doc.id));
-      setDebugStatus('מסמך נמחק בהצלחה');
-      setTimeout(() => setDebugStatus(null), 3000);
     } catch (err: any) {
-      console.error('Critical delete error:', err);
-      setDebugStatus(`Error: ${err.message}`);
       alert('שגיאה במחיקה: ' + err.message);
-    } finally {
-      setUploading(false);
     }
   }
+
+  // Kanban Drag & Drop Handlers
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedLead(id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+    if (draggedLead) {
+      await updateLeadField(draggedLead, 'status', newStatus);
+      setDraggedLead(null);
+    }
+  };
 
   const filtered = useMemo(() =>
     leads.filter(l =>
@@ -488,472 +281,397 @@ export default function Home() {
     total: leads.length,
     new: leads.filter(l => l.status === 'NEW_LEAD').length,
     meetings: leads.filter(l => l.status === 'MEETING_SCHEDULED').length,
-    held: leads.filter(l => l.status === 'MEETING_HELD').length,
     docs: leads.filter(l => l.status === 'DOC_COLLECTION').length,
-    later: leads.filter(l => l.status === 'CALL_BACK_LATER').length,
     clients: leads.filter(l => l.status === 'CLIENT').length,
-    cancelled: leads.filter(l => l.status === 'CANCELLED').length,
   }), [leads]);
 
-  // Calendar logic
-  const calendarDays = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
-    // Fill up prefix (days from prev month)
-    const days = [];
-    const prefixCount = firstDay.getDay(); // Sunday=0, etc.
-    for (let i = prefixCount - 1; i >= 0; i--) {
-      days.push({ date: new Date(year, month, -i), isCurrent: false });
-    }
-    
-    // Fill current month
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-        days.push({ date: new Date(year, month, i), isCurrent: true });
-    }
-    
-    // Fill suffix
-    const suffixCount = 42 - days.length; // 6 rows of 7
-    for (let i = 1; i <= suffixCount; i++) {
-        days.push({ date: new Date(year, month + 1, i), isCurrent: false });
-    }
-    
-    return days;
-  }, [currentMonth]);
-
-  const meetingsByDay = useMemo(() => {
-    const map: Record<string, Lead[]> = {};
-    leads.forEach(l => {
-      const d = parseHebrewDate(l.meeting_time);
-      if (d) {
-        const key = d.toDateString();
-        if (!map[key]) map[key] = [];
-        map[key].push(l);
-      }
-    });
-    return map;
-  }, [leads]);
-
-  if (isAuthenticated === null) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0F172A', color: '#64748B' }}>טוען...</div>;
+  if (isAuthenticated === null) return null;
 
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <ResponsiveStyles />
-        <div className="modal-content" style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(16px)', borderRadius: 24, padding: 48, width: '100%', maxWidth: 420, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 24 }}>🛡️</div>
-          <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.025em' }}>כניסה למערכת</h1>
-          <p style={{ color: '#94A3B8', fontSize: 16, marginBottom: 40 }}>אדמתנו ביתנו — CRM מאובטח</p>
-          
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div style={{ textAlign: 'right' }}>
-              <label htmlFor="crm-user" style={{ color: '#CBD5E1', fontSize: 14, fontWeight: 600, display: 'block', marginBottom: 10 }}>שם משתמש</label>
-              <input 
-                id="crm-user"
-                name="username"
-                autoComplete="username"
-                value={loginForm.user} 
-                onChange={e => setLoginForm({...loginForm, user: e.target.value})}
-                placeholder="הזן שם משתמש"
-                autoFocus
-                style={{ width: '100%', padding: '14px 18px', borderRadius: 12, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', outline: 'none', transition: 'border-color 0.2s' }}
-              />
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <label htmlFor="crm-pass" style={{ color: '#CBD5E1', fontSize: 14, fontWeight: 600, display: 'block', marginBottom: 10 }}>סיסמא</label>
-              <input 
-                id="crm-pass"
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                value={loginForm.pass} 
-                onChange={e => setLoginForm({...loginForm, pass: e.target.value})}
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '14px 18px', borderRadius: 12, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', outline: 'none', transition: 'border-color 0.2s' }}
-              />
-            </div>
-            <button type="submit" style={{ width: '100%', padding: '16px', borderRadius: 12, background: '#3B82F6', color: '#fff', border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)', transition: 'transform 0.1s' }}>
-              התחברות למערכת
+      <div className="min-h-screen flex items-center justify-center bg-slate-900" dir="rtl">
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-3xl w-full max-w-sm shadow-2xl text-center">
+          <h1 className="text-white text-3xl font-bold mb-2">אדמתנו ביתנו</h1>
+          <p className="text-slate-400 text-sm mb-8">התחברות ללוח הבקרה המאובטח</p>
+          <form onSubmit={handleLogin} className="flex flex-col gap-5">
+            <input 
+              value={loginForm.user} onChange={e => setLoginForm({...loginForm, user: e.target.value})}
+              placeholder="שם משתמש" autoFocus
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-indigo-500 transition-colors"
+            />
+            <input 
+              type="password" value={loginForm.pass} onChange={e => setLoginForm({...loginForm, pass: e.target.value})}
+              placeholder="סיסמא"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-indigo-500 transition-colors"
+            />
+            <button type="submit" className="w-full py-3 mt-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all">
+              היכנס למערכת
             </button>
           </form>
-          
-          <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid rgba(255, 255, 255, 0.1)', color: '#64748B', fontSize: 12 }}>
-            המערכת מיועדת לצוות מורשה בלבד
-          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={s.page}>
-      <ResponsiveStyles />
-      {/* Header */}
-      <header className="header-container" style={s.header}>
-        <div style={s.logoBox}>
-          <div style={{ fontSize: 28 }}>🏠</div>
-          <div>
-            <h1 style={s.h1}>אדמתנו ביתנו — CRM</h1>
-            <p style={s.sub}>ניהול לידים ופגישות חכם</p>
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden" dir="rtl">
+      
+      {/* Sidebar */}
+      <aside className="w-20 lg:w-64 bg-white border-l border-slate-200 flex flex-col justify-between transition-all duration-300 z-20">
+        <div>
+          <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-100">
+            <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-xl shadow-md">א</div>
+            <span className="hidden lg:block mr-3 font-bold text-lg text-slate-800">אדמתנו ביתנו</span>
           </div>
+          <nav className="p-4 flex flex-col gap-2">
+            <button onClick={() => setViewMode('table')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'table' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <LayoutDashboard size={20} /> <span className="hidden lg:block">לוח בקרה</span>
+            </button>
+            <button onClick={() => setViewMode('kanban')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'kanban' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <KanbanSquare size={20} /> <span className="hidden lg:block">ניהול תהליכים</span>
+            </button>
+            <button onClick={() => setManualModal(true)} className="flex items-center gap-3 w-full p-3 rounded-xl font-medium text-slate-500 hover:bg-slate-50 transition-all">
+              <Plus size={20} /> <span className="hidden lg:block">ליד חדש הוספה ידנית</span>
+            </button>
+          </nav>
         </div>
-        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button 
-            style={{ ...s.btn, background: 'none', color: '#64748B', border: '1px solid #E2E8F0', padding: '6px 12px', fontSize: 12, gap: 8 }} 
-            onClick={handleLogout}
-            title="התנתקות מהמערכת"
-          >
-            <span>🚪</span> התנתקות
+        <div className="p-4 border-t border-slate-100">
+          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all">
+            <LogOut size={20} /> <span className="hidden lg:block">התנתק</span>
           </button>
-          <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: 8, padding: 4, marginRight: 12 }}>
-             <button style={{ ...s.fbtn(viewMode === 'table'), padding: '6px 12px' }} onClick={() => setViewMode('table')}>📋 טבלה</button>
-             <button style={{ ...s.fbtn(viewMode === 'calendar'), padding: '6px 12px' }} onClick={() => setViewMode('calendar')}>📅 יומן</button>
-          </div>
-          <button style={s.btn} onClick={() => setManualModal(true)}>
-            <span style={{ fontSize: 18 }}>+</span> הוספת ליד ידני
-          </button>
-          <button style={{ ...s.btn, background: '#fff', color: '#0F172A', border: '1px solid #E2E8F0' }} onClick={fetchLeads}>↻ רענן</button>
         </div>
-      </header>
+      </aside>
 
-      <main style={s.main}>
-        <div className="stats-grid" style={s.grid}>
-          {[
-            { label: 'סה"כ לידים', value: stats.total, color: '#0F172A', icon: '👥' },
-            { label: 'לידים חדשים', value: stats.new, color: '#1D4ED8', icon: '✨' },
-            { label: 'נקבעו פגישות', value: stats.meetings, color: '#B45309', icon: '📅' },
-            { label: 'התקיימו פגישות', value: stats.held, color: '#059669', icon: '🤝' },
-            { label: 'איסוף מסמכים', value: stats.docs, color: '#0EA5E9', icon: '📂' },
-            { label: 'לחזור מאוחר יותר', value: stats.later, color: '#7C3AED', icon: '📞' },
-            { label: 'אושרו', value: stats.clients, color: '#065F46', icon: '✅' },
-            { label: 'לא רלוונטי', value: stats.cancelled, color: '#64748B', icon: '🗑️' },
-          ].map(c => (
-            <div key={c.label} className="stats-card" style={s.card}>
-              <span style={s.cardIcon}>{c.icon}</span>
-              <p style={s.cl}>{c.label}</p>
-              <p style={{ ...s.cv, color: c.color }}>{c.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {viewMode === 'table' ? (
-          <>
-            <div className="filter-bar" style={s.filters}>
-              <input
-                className="search-input"
-                style={s.input}
-                placeholder="חיפוש לפי שם, טלפון, סיכום או הערות..."
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        
+        {/* Header */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="relative w-full max-w-md hidden md:block">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="חפש ליד, טלפון, עיר או הערה..." 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pr-10 pl-4 text-sm outline-none focus:border-indigo-500 focus:bg-white transition-all"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
-              {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
-                <button key={st} style={s.fbtn(filter === st)} onClick={() => setFilter(st)}>
-                  {st === 'ALL' ? 'הכל' : STATUS_CONFIG[st]?.label || st}
-                </button>
-              ))}
             </div>
-
-            <div style={s.tableWrapper}>
-            {loading ? (
-              <div style={s.spin}><div>טוען...</div></div>
-            ) : filtered.length === 0 ? (
-              <div style={s.empty}>אין לידים להצגה.</div>
-            ) : (
-              <table style={s.table}>
-                <thead>
-                  <tr>
-                    {['שם', 'טלפון', 'יישוב', 'סיכום המערכת', 'מועד פגישה', 'הערות סוכן', 'מסמכים', 'סטטוס', 'ניהול'].map(h => (
-                      <th key={h} style={s.th}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(lead => (
-                    <tr key={lead.id} onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                      <td style={{ ...s.td, fontWeight: 700, color: '#0F172A' }}>{lead.full_name || '—'}</td>
-                      <td style={{ ...s.td, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace' }}>{lead.phone}</td>
-                      <td style={s.td}>{lead.city || '—'}</td>
-                      <td style={{ ...s.td, width: '25%', minWidth: 200 }}>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', fontSize: 12 }}>{lead.summary_sentence || '—'}</div>
-                      </td>
-                      <td style={{ ...s.td, whiteSpace: 'nowrap' }}>{lead.meeting_time || '—'}</td>
-                      <td style={s.td}>
-                        {editingNoteId === lead.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
-                            <textarea
-                              style={s.notesArea}
-                              autoFocus
-                              value={tempNoteText}
-                              onChange={(e) => setTempNoteText(e.target.value)}
-                            />
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button style={{ ...s.actionBtn, background: '#0F172A', color: '#fff' }} onClick={() => updateLeadField(lead.id, 'agent_notes', tempNoteText)}>שמור</button>
-                              <button style={{ ...s.actionBtn, background: '#E2E8F0', color: '#475569' }} onClick={() => setEditingNoteId(null)}>ביטול</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={s.notesBox} onClick={() => { setEditingNoteId(lead.id); setTempNoteText(lead.agent_notes || ""); }}>
-                            <span style={s.editIcon}>✏️</span>
-                            <div style={s.notesText}>{lead.agent_notes || <i style={{ color: '#CBD5E1' }}>הוסף הערות...</i>}</div>
-                          </div>
-                        )}
-                      </td>
-                      <td style={s.td}>
-                        <button style={{ ...s.btn, background: '#E2E8F0', color: '#0F172A', padding: '6px 12px', fontSize: 11 }} onClick={() => openDocModal(lead)}>
-                          📂 מסמכים
-                        </button>
-                      </td>
-                      <td style={s.td}>
-                        <select style={s.sel} value={lead.status} onChange={e => updateLeadField(lead.id, 'status', e.target.value)}>
-                          {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
-                        </select>
-                      </td>
-                      <td style={s.td}>
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                            <button 
-                              style={{ ...s.actionBtn, background: '#F1F5F9', color: '#64748B' }} 
-                              onClick={() => { 
-                                setMeetingModalLead(lead);
-                                const existingDate = parseHebrewDate(lead.meeting_time);
-                                if (existingDate) {
-                                  setManualDate(existingDate.toISOString().split('T')[0]);
-                                  setManualTime(existingDate.toTimeString().split(' ')[0].substring(0, 5));
-                                } else {
-                                  setManualDate(new Date().toISOString().split('T')[0]);
-                                  setManualTime("10:00");
-                                }
-                              }}
-                                title="ניהול פגישה"
-                              >
-                                📅
-                              </button>
-                               <button 
-                                style={{ ...s.actionBtn, background: '#F8FAFC', color: '#64748B' }} 
-                                onClick={() => setEditModalLead(lead)}
-                                title="ערוך פרטיי ליד"
-                              >
-                                ✏️
-                              </button>
-                            <button 
-                              style={{ ...s.btn, background: '#F0FDF4', color: '#15803D', padding: '6px 8px', fontSize: 13 }} 
-                               title="שלח תזכורת במייל" 
-                               onClick={() => shareByEmail(lead)}
-                            >
-                              ✉️
-                            </button>
-                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start', marginLeft: 8 }}>
-                              <span style={{ fontSize: 10, color: '#94A3B8' }}>{new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
-                              <button style={{ ...s.deleteBtn, fontSize: 11 }} title="מחק ליד" onClick={(e) => { e.stopPropagation(); deleteLead(lead.id, lead.full_name); }}>🗑️ מחק</button>
-                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            </div>
-          </>
-        ) : (
-          <div style={s.tableWrapper}>
-              <div style={s.calendarNav}>
-                  <button style={s.navBtn} onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}>→</button>
-                  <div style={s.navTitle}>
-                      {currentMonth.toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
-                  </div>
-                  <button style={s.navBtn} onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>←</button>
-              </div>
-              
-              <div style={s.calendarGrid}>
-                  {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(d => (
-                    <div key={d} style={{ background: '#F1F5F9', padding: 12, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748B' }}>{d}</div>
-                  ))}
-                  {calendarDays.map((cd, idx) => {
-                      const dayMeetings = meetingsByDay[cd.date.toDateString()] || [];
-                      const today = new Date();
-                      const isToday = cd.date.toDateString() === today.toDateString();
-                      
-                      return (
-                        <div key={idx} style={{ ...s.calendarDay, ...(isToday ? s.isToday : {}), opacity: cd.isCurrent ? 1 : 0.4 }}>
-                            <div style={s.dayHeader}>
-                                <span style={s.dayNum}>{cd.date.getDate()}</span>
-                            </div>
-                            <div style={{ flex: 1, overflowY: 'auto' }}>
-                                {dayMeetings.slice(0, 3).map(m => (
-                                    <div 
-                                      key={m.id} 
-                                      style={{ ...s.meetingItem, background: STATUS_CONFIG[m.status]?.bg || '#F1F5F9', color: STATUS_CONFIG[m.status]?.color || '#1e293b' }}
-                                      onClick={() => { setViewMode('table'); setSearch(m.phone); }}
-                                      title={m.full_name}
-                                    >
-                                        <b>{m.meeting_time.split(' בשעה ')[1]}</b> {m.full_name}
-                                    </div>
-                                ))}
-                                {dayMeetings.length > 3 && <div style={{ fontSize: 9, color: '#94A3B8', textAlign: 'center' }}>+{dayMeetings.length - 3} נוספים</div>}
-                            </div>
-                        </div>
-                      );
-                  })}
-              </div>
           </div>
-        )}
+          <div className="flex items-center gap-4">
+            <button onClick={fetchLeads} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="רענן נתונים">
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable Workspace */}
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6 lg:p-8">
+          
+          {/* KPI Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 mb-8">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><p className="text-sm text-slate-500 font-medium mb-1">סה"כ לידים</p><h3 className="text-2xl font-bold text-slate-900">{stats.total}</h3></div>
+              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><Users size={24} /></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><p className="text-sm text-slate-500 font-medium mb-1">לידים חדשים</p><h3 className="text-2xl font-bold text-blue-700">{stats.new}</h3></div>
+              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><AlertCircle size={24} /></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><p className="text-sm text-slate-500 font-medium mb-1">ממתינים לפגישה</p><h3 className="text-2xl font-bold text-amber-700">{stats.meetings}</h3></div>
+              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600"><Calendar size={24} /></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><p className="text-sm text-slate-500 font-medium mb-1">לקוחות מאושרים</p><h3 className="text-2xl font-bold text-emerald-700">{stats.clients}</h3></div>
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600"><CheckCircle2 size={24} /></div>
+            </div>
+          </div>
+
+          {viewMode === 'table' ? (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
+                {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT'].map(st => (
+                  <button 
+                    key={st} 
+                    onClick={() => setFilter(st)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${filter === st ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    {st === 'ALL' ? 'כל הלידים' : STATUS_CONFIG[st]?.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Data Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
+                      <th className="py-4 px-6 font-semibold text-right">שם הלקוח</th>
+                      <th className="py-4 px-6 font-semibold text-right">סטטוס</th>
+                      <th className="py-4 px-6 font-semibold text-right">מועד פגישה</th>
+                      <th className="py-4 px-6 font-semibold text-right hidden lg:table-cell">עיר</th>
+                      <th className="py-4 px-6 font-semibold text-right hidden xl:table-cell">תקציר AI</th>
+                      <th className="py-4 px-6 font-semibold text-right">פעולות</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan={6} className="py-12 text-center text-slate-500">אין נתונים להציג</td></tr>
+                    ) : (
+                      filtered.map(lead => {
+                        const statusObj = STATUS_CONFIG[lead.status] || STATUS_CONFIG['NEW_LEAD'];
+                        return (
+                          <tr key={lead.id} className="hover:bg-slate-50/70 transition-colors group cursor-pointer" onClick={() => { setProfileLead(lead); fetchDocs(lead.id); setActiveTab('overview'); }}>
+                            <td className="py-4 px-6">
+                              <div className="font-bold text-slate-900">{lead.full_name || 'לקוח ללא שם'}</div>
+                              <div className="text-sm text-slate-500 font-mono mt-0.5">{lead.phone}</div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${statusObj.bg} ${statusObj.color} border ${statusObj.border}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${statusObj.dot}`}></span>
+                                {statusObj.label}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-sm text-slate-700 whitespace-nowrap">
+                              {lead.meeting_time || <span className="text-slate-400">טרם נקבע</span>}
+                            </td>
+                            <td className="py-4 px-6 text-sm text-slate-600 hidden lg:table-cell">{lead.city || '—'}</td>
+                            <td className="py-4 px-6 text-sm text-slate-600 hidden xl:table-cell max-w-xs truncate">
+                              {lead.summary_sentence || 'אין תקציר'}
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="פתח פרופיל מלא" onClick={(e) => { e.stopPropagation(); setProfileLead(lead); fetchDocs(lead.id); }}><Edit size={16}/></button>
+                                <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="שלח לוואטסאפ" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phone}`, '_blank'); }}><Send size={16}/></button>
+                                <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="מחק" onClick={(e) => { e.stopPropagation(); deleteLead(lead.id, lead.full_name); }}><Trash2 size={16}/></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            // Kanban Pipeline View
+            <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-200px)] items-start">
+              {KANBAN_STAGES.map(stage => {
+                const stageLeads = leads.filter(l => l.status === stage);
+                const stageObj = STATUS_CONFIG[stage];
+                return (
+                  <div 
+                    key={stage} 
+                    className="w-80 shrink-0 flex flex-col h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, stage)}
+                  >
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <h3 className="font-bold text-slate-700">{stageObj.label}</h3>
+                      <span className="bg-white text-slate-500 text-xs font-bold px-2 py-1 rounded-full shadow-sm">{stageLeads.length}</span>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-3">
+                      {stageLeads.map(lead => (
+                        <div 
+                          key={lead.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, lead.id)}
+                          onClick={() => { setProfileLead(lead); fetchDocs(lead.id); }}
+                          className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-md transition-all group"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-bold text-slate-800 text-sm truncate pr-2">{lead.full_name || 'לקוח'}</h4>
+                            {lead.meeting_time && <span className="bg-indigo-50 text-indigo-600 text-[10px] px-2 py-0.5 rounded font-medium shrink-0">פגישה</span>}
+                          </div>
+                          <p className="text-xs text-slate-500 font-mono mb-3">{lead.phone}</p>
+                          <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                             <div className="text-[10px] text-slate-400">{new Date(lead.created_at).toLocaleDateString('he-IL')}</div>
+                             <div className="opacity-0 group-hover:opacity-100 transition-opacity"><Edit size={14} className="text-slate-400"/></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Manual Add Lead Modal */}
       {manualModal && (
-        <div className="modal-container" style={s.modal} onClick={() => setManualModal(false)}>
-          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
-            <button style={s.closeBtn} onClick={() => setManualModal(false)}>✕</button>
-            <h2 style={{ fontSize: 20, marginBottom: 24, paddingLeft: 30 }}>הוספת ליד חדש למערכת</h2>
-            <form onSubmit={handleAddLead} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
+            <button onClick={() => setManualModal(false)} className="absolute top-4 left-4 p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+            <h2 className="text-xl font-bold text-slate-800 mb-6">הוספת ליד ידני</h2>
+            <form onSubmit={handleAddLead} className="flex flex-col gap-4">
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שם מלא</label>
-                <input style={s.input} value={newLead.full_name} onChange={e => setNewLead({...newLead, full_name: e.target.value})} placeholder="שם הלקוח" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">שם הלקוח</label>
+                <input required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:bg-white transition-colors" value={newLead.full_name} onChange={e => setNewLead({...newLead, full_name: e.target.value})} placeholder="ישראל ישראלי" />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>טלפון</label>
-                <input style={s.input} value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} placeholder="0501234567" required />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">טלפון נייד</label>
+                <input required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:bg-white transition-colors text-left" dir="ltr" value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} placeholder="050-0000000" />
               </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>יישוב</label>
-                <input style={s.input} value={newLead.city} onChange={e => setNewLead({...newLead, city: e.target.value})} placeholder="תל אביב, ירושלים..." />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>סיכום ראשוני / פרטים</label>
-                <textarea style={{ ...s.notesArea, minHeight: 120, border: '1px solid #E2E8F0' }} value={newLead.summary_sentence} onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})} placeholder="פרטים על ההלוואה..." />
-              </div>
-              <button type="submit" style={{ ...s.btn, width: '100%', justifyContent: 'center', padding: 14, marginTop: 10 }}>שמור ליד למערכת</button>
+              <button type="submit" className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors">שמור במערכת</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Document Modal */}
-      {docModalLead && (
-        <div className="modal-container" style={s.modal} onClick={() => setDocModalLead(null)}>
-          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
-            <button style={s.closeBtn} onClick={() => setDocModalLead(null)}>✕</button>
-            <h2 style={{ marginBottom: 4 }}>מסמכים: {docModalLead.full_name}</h2>
-            <p style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{docModalLead.phone}</p>
+      {/* High-End Tabbed Profile Modal */}
+      {profileLead && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-10">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
             
-            <div style={{ marginBottom: 20 }}>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                style={{ display: 'none' }} 
-                multiple={true} 
-                onChange={handleFileUpload} 
-                disabled={uploading} 
-              />
-              <button 
-                style={{ ...s.btn, width: 'fit-content' }} 
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                disabled={uploading}
-              >
-                <span>➕</span> {uploading ? (uploadProgress || 'מעלה קבצים...') : 'העלאת מסמכים'}
-              </button>
+            {/* Modal Header */}
+            <div className="bg-slate-50 border-b border-slate-200 px-8 py-6 shrink-0 flex justify-between items-start">
+               <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-bold text-slate-900">{profileLead.full_name || 'לקוח ללא שם'}</h2>
+                    <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border ${STATUS_CONFIG[profileLead.status]?.bg} ${STATUS_CONFIG[profileLead.status]?.color} ${STATUS_CONFIG[profileLead.status]?.border}`}>
+                      {STATUS_CONFIG[profileLead.status]?.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <span className="flex items-center gap-1.5"><Phone size={14}/> <span dir="ltr">{profileLead.phone}</span></span>
+                    {profileLead.city && <span className="flex items-center gap-1.5"><MapPin size={14}/> {profileLead.city}</span>}
+                    <span className="flex items-center gap-1.5"><Calendar size={14}/> נוצר ב: {new Date(profileLead.created_at).toLocaleDateString('he-IL')}</span>
+                  </div>
+               </div>
+               <button onClick={() => setProfileLead(null)} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors"><X size={24}/></button>
             </div>
 
-            <div style={{ minHeight: 100 }}>
-              {leadDocs.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>אין מסמכים עדיין לליד זה.</div>
-              ) : (
-                leadDocs.map(doc => (
-                  <div key={doc.id} style={s.docItem}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-                      <span style={{ fontSize: 18 }}>📄</span>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <a href={doc.file_url} target="_blank" style={s.fileLink}>{doc.file_name}</a>
-                        <span style={{ fontSize: 10, color: '#94A3B8' }}>
-                          {(doc.size_bytes / 1024).toFixed(1)}KB • {new Date(doc.created_at).toLocaleDateString('he-IL')}
-                        </span>
-                      </div>
+            {/* Modal Tabs */}
+            <div className="flex border-b border-slate-200 px-8 shrink-0">
+               <button onClick={() => setActiveTab('overview')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>סקירה כללית</button>
+               <button onClick={() => setActiveTab('meetings')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'meetings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>פגישות ולו"ז</button>
+               <button onClick={() => setActiveTab('notes')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'notes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>הערות סוכן</button>
+               <button onClick={() => setActiveTab('docs')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'docs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>מסמכים וטפסים</button>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="p-8 overflow-y-auto flex-1 bg-white">
+              
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <div className="flex flex-col gap-8">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">סיכום המערכת (AI)</label>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      {profileLead.summary_sentence || 'עדיין אין סיכום מהבוט.'}
                     </div>
-                    <button 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#94A3B8' }} 
-                      onClick={(e) => { e.stopPropagation(); deleteDocument(doc); }}
-                      title="מחק מסמך"
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">עדכון סטטוס ידני</label>
+                    <select 
+                      value={profileLead.status} 
+                      onChange={e => updateLeadField(profileLead.id, 'status', e.target.value)}
+                      className="w-full max-w-sm bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
                     >
-                      🗑️
+                      {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
+                    </select>
+                  </div>
+                  <div className="pt-6 border-t border-slate-100">
+                    <button onClick={() => deleteLead(profileLead.id, profileLead.full_name)} className="flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 size={16}/> מחק פנייה זו מהמערכת בלתי הפיך
                     </button>
                   </div>
-                ))
+                </div>
+              )}
+
+              {/* Meetings Tab */}
+              {activeTab === 'meetings' && (
+                <div className="flex flex-col lg:flex-row gap-8">
+                  <div className="flex-1 bg-slate-50 border border-slate-100 p-6 rounded-2xl">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Calendar size={18} className="text-indigo-600"/> מועד פגישה נוכחי</h3>
+                    {profileLead.meeting_time ? (
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-lg font-medium text-indigo-900 border-l-4 border-l-indigo-600 mb-6">
+                        {profileLead.meeting_time}
+                      </div>
+                    ) : (
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 text-slate-500 mb-6">לא נקבעה פגישה</div>
+                    )}
+                    <div className="flex gap-3">
+                      <button onClick={() => addToCalendar(profileLead)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold shadow-md transition-colors flex justify-center items-center gap-2"><Calendar size={18}/> סנכרן לגוגל יומן</button>
+                      <button onClick={() => shareByEmail(profileLead)} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 p-3 rounded-xl font-semibold transition-colors shadow-sm"><Mail size={20}/></button>
+                      <button onClick={() => window.open(`https://wa.me/${profileLead.phone}`, '_blank')} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-xl font-semibold transition-colors shadow-sm"><Send size={20}/></button>
+                    </div>
+                  </div>
+                  <div className="flex-1 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                    <h3 className="font-bold text-slate-800 mb-4">קביעת/עדכון מועד ידני</h3>
+                    <form onSubmit={handleScheduleMeeting} className="flex flex-col gap-4">
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="text-xs font-semibold text-slate-500 block mb-1">תאריך</label>
+                          <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500" value={manualDate} onChange={e => setManualDate(e.target.value)} />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-semibold text-slate-500 block mb-1">שעה</label>
+                          <input type="time" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500" value={manualTime} onChange={e => setManualTime(e.target.value)} />
+                        </div>
+                      </div>
+                      <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-lg font-semibold mt-2 transition-colors">שמור פגישה ב-CRM</button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes Tab */}
+              {activeTab === 'notes' && (
+                <div className="flex flex-col h-full">
+                  <p className="text-sm text-slate-500 mb-4">אזור אישי לתיעוד מידע, הערות פנימיות והתקדמות אישית. (הלקוח לא רואה זאת).</p>
+                  <textarea 
+                    value={profileLead.agent_notes || ''} 
+                    onChange={e => updateLeadField(profileLead.id, 'agent_notes', e.target.value)}
+                    placeholder="הקלד/י כאן..."
+                    className="w-full flex-1 min-h-[300px] p-5 rounded-2xl bg-amber-50/50 border border-amber-100 text-slate-800 leading-relaxed outline-none focus:border-amber-300 focus:bg-amber-50 transition-colors resize-none"
+                  />
+                </div>
+              )}
+
+              {/* Docs Tab */}
+              {activeTab === 'docs' && (
+                <div>
+                   <div className="flex justify-between items-center mb-6">
+                      <p className="text-sm text-slate-500">ניהול עותקי תעודות זהות, תלושים ומסמכים רלוונטיים.</p>
+                      <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} disabled={uploading} />
+                      <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg font-semibold text-sm transition-colors border border-indigo-200 flex items-center gap-2">
+                        {uploading ? <RefreshCw size={16} className="animate-spin"/> : <Plus size={16}/>}
+                        {uploading ? uploadProgress || 'מעלה...' : 'הוסף קבצים'}
+                      </button>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {leadDocs.length === 0 ? (
+                       <div className="col-span-full py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                         <FileText size={48} className="mx-auto text-slate-300 mb-3"/>
+                         <h3 className="text-slate-500 font-medium">אין מסמכים שהועלו.</h3>
+                         <button onClick={() => fileInputRef.current?.click()} className="text-indigo-600 font-semibold text-sm mt-2">לחץ כאן להעלאה</button>
+                       </div>
+                     ) : (
+                       leadDocs.map(doc => (
+                         <div key={doc.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors bg-white shadow-sm">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0"><FileText size={20}/></div>
+                              <div className="truncate">
+                                 <a href={doc.file_url} target="_blank" className="font-semibold text-sm text-slate-800 hover:text-indigo-600 truncate block">{doc.file_name}</a>
+                                 <span className="text-xs text-slate-400">{(doc.size_bytes / 1024).toFixed(1)}KB • {new Date(doc.created_at).toLocaleDateString('he-IL')}</span>
+                              </div>
+                            </div>
+                            <button onClick={() => deleteDocument(doc)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0 transition-colors"><Trash2 size={16}/></button>
+                         </div>
+                       ))
+                     )}
+                   </div>
+                </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Lead Modal */}
-      {editModalLead && (
-        <div className="modal-container" style={s.modal} onClick={() => setEditModalLead(null)}>
-          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
-            <button style={s.closeBtn} onClick={() => setEditModalLead(null)}>✕</button>
-            <h2 style={{ fontSize: 20, marginBottom: 24, paddingLeft: 30 }}>עריכת פרטי ליד</h2>
-            <form onSubmit={handleUpdateLead} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שם מלא</label>
-                <input style={s.input} value={editModalLead.full_name} onChange={e => setEditModalLead({...editModalLead, full_name: e.target.value})} placeholder="שם הלקוח" />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>טלפון</label>
-                <input style={s.input} value={editModalLead.phone} onChange={e => setEditModalLead({...editModalLead, phone: e.target.value})} placeholder="0501234567" required />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>יישוב</label>
-                <input style={s.input} value={editModalLead.city} onChange={e => setEditModalLead({...editModalLead, city: e.target.value})} placeholder="תל אביב, ירושלים..." />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>סיכום המערכת</label>
-                <textarea style={{ ...s.notesArea, minHeight: 100, border: '1px solid #E2E8F0' }} value={editModalLead.summary_sentence} onChange={e => setEditModalLead({...editModalLead, summary_sentence: e.target.value})} placeholder="סיכום המערכת..." />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>הערות סוכן</label>
-                <textarea style={{ ...s.notesArea, minHeight: 100, border: '1px solid #E2E8F0' }} value={editModalLead.agent_notes} onChange={e => setEditModalLead({...editModalLead, agent_notes: e.target.value})} placeholder="הערות נוספות..." />
-              </div>
-              <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                <button type="submit" style={{ ...s.btn, flex: 1, justifyContent: 'center', padding: 14, background: '#0F172A', color: '#fff' }}>שמור שינויים</button>
-                <button type="button" onClick={() => setEditModalLead(null)} style={{ ...s.btn, flex: 1, justifyContent: 'center', padding: 14, background: '#E2E8F0', color: '#475569' }}>ביטול</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Schedule Meeting Modal */}
-      {meetingModalLead && (
-        <div className="modal-container" style={s.modal} onClick={() => setMeetingModalLead(null)}>
-          <div className="modal-content" style={s.modalContent} onClick={e => e.stopPropagation()}>
-            <button style={s.closeBtn} onClick={() => setMeetingModalLead(null)}>✕</button>
-            <h2 style={{ fontSize: 20, marginBottom: 24, paddingLeft: 30 }}>קביעת פגישה ידנית עבור {meetingModalLead.full_name}</h2>
-            <form onSubmit={handleScheduleMeeting} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>תאריך</label>
-                <input type="date" style={s.input} value={manualDate} onChange={e => setManualDate(e.target.value)} required />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>שעה</label>
-                <input type="time" style={s.input} value={manualTime} onChange={e => setManualTime(e.target.value)} required />
-              </div>
-               <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                <button type="submit" style={{ ...s.btn, flex: 1, justifyContent: 'center', padding: 14 }}>שמור ב-CRM בלבד</button>
-                <button 
-                  type="button" 
-                  onClick={async (e) => {
-                    await handleScheduleMeeting(e as any);
-                    // The updated meeting time is needed for sync
-                    const formattedDate = manualDate.split('-').reverse().join('.');
-                    const updatedLead = { ...meetingModalLead, meeting_time: `${formattedDate} ${manualTime}` };
-                    addToCalendar(updatedLead);
-                  }}
-                  style={{ ...s.btn, flex: 1, background: '#7C3AED', justifyContent: 'center', padding: 14 }}
-                >
-                  שמור וסנכרן ל-Google
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
