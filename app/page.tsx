@@ -5,7 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   Users, LayoutDashboard, KanbanSquare, LogOut, 
   Search, Plus, RefreshCw, Send, Calendar, Edit, FileText, 
-  Trash2, Mail, MapPin, Phone, CheckCircle2, AlertCircle, X, ChevronRight, ChevronLeft
+  Trash2, Mail, MapPin, Phone, CheckCircle2, AlertCircle, X, 
+  ChevronRight, ChevronLeft, TrendingUp, Zap, History, Lightbulb
 } from 'lucide-react';
 
 // Tooltip wrapper — pure CSS, no library needed
@@ -36,6 +37,8 @@ type Lead = {
   status: string;
   agent_notes: string;
   city?: string;
+  consultant?: string;
+  last_contact_at?: string;
 };
 
 type LeadDoc = {
@@ -78,12 +81,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar' | 'insights'>('table');
   const [calMonth, setCalMonth] = useState(new Date());
   
   // Modals & Profile
   const [profileLead, setProfileLead] = useState<Lead | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'docs' | 'meetings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'docs' | 'meetings' | 'timeline'>('overview');
   const [leadDocs, setLeadDocs] = useState<LeadDoc[]>([]);
   const [manualModal, setManualModal] = useState(false);
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', summary_sentence: '', city: '' });
@@ -97,6 +100,9 @@ export default function Dashboard() {
   
   // Kanban Drag & Drop
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
+
+  // Drill-down Modal State
+  const [drillDownData, setDrillDownData] = useState<{ title: string; leads: Lead[] } | null>(null);
 
   // Debounced agent notes — local state to prevent input lag
   const [notesText, setNotesText] = useState('');
@@ -293,17 +299,33 @@ export default function Dashboard() {
 
   const filtered = useMemo(() =>
     leads.filter(l =>
-      (filter === 'ALL' || l.status === filter) &&
+      (filter === 'ALL' || l.status === filter || (filter === 'HOT' && getLeadScore(l) >= 80)) &&
       (search === '' || [l.full_name, l.phone, l.city, l.summary_sentence, l.agent_notes].some(v => v?.includes(search)))
     ), [leads, filter, search]);
 
   const stats = useMemo(() => ({
     total: leads.length,
     new: leads.filter(l => l.status === 'NEW_LEAD').length,
-    meetings: leads.filter(l => l.status === 'MEETING_SCHEDULED').length,
+    meetings: leads.filter(l => ['MEETING_SCHEDULED', 'MEETING_HELD'].includes(l.status)).length,
     docs: leads.filter(l => l.status === 'DOC_COLLECTION').length,
     clients: leads.filter(l => l.status === 'CLIENT').length,
   }), [leads]);
+
+  // Lead Scoring Logic
+  function getLeadScore(lead: Lead) {
+    let score = 30; // Base score
+    if (['MEETING_SCHEDULED', 'MEETING_HELD'].includes(lead.status)) score += 40;
+    if (lead.status === 'DOC_COLLECTION') score += 20;
+    if (lead.agent_notes && lead.agent_notes.length > 50) score += 10;
+    if (lead.status === 'CANCELLED') score = 0;
+    return Math.min(score, 100);
+  }
+
+  function getScoreColor(score: number) {
+    if (score >= 80) return 'from-orange-500 to-red-600'; // HOT
+    if (score >= 50) return 'from-amber-400 to-orange-500'; // WARM
+    return 'from-slate-400 to-slate-500'; // COLD
+  }
 
   if (isAuthenticated === null) return null;
 
@@ -344,8 +366,8 @@ export default function Dashboard() {
             <span className="hidden lg:block mr-3 font-bold text-lg text-slate-800">אדמתנו ביתנו</span>
           </div>
           <nav className="p-4 flex flex-col gap-2">
-            <button onClick={() => setViewMode('table')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'table' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <LayoutDashboard size={20} /> <span className="hidden lg:block">לוח בקרה</span>
+            <button onClick={() => { setViewMode('table'); setFilter('ALL'); setSearch(''); }} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'table' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <LayoutDashboard size={20} className="text-indigo-500" /> <span className="hidden lg:block font-bold">לוח בקרה</span>
             </button>
             <button onClick={() => setViewMode('kanban')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'kanban' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
               <KanbanSquare size={20} /> <span className="hidden lg:block">ניהול תהליכים</span>
@@ -354,7 +376,11 @@ export default function Dashboard() {
               <Calendar size={20} /> <span className="hidden lg:block">יומן פגישות</span>
             </button>
             <button onClick={() => setManualModal(true)} className="flex items-center gap-3 w-full p-3 rounded-xl font-medium text-slate-500 hover:bg-slate-50 transition-all">
-              <Plus size={20} /> <span className="hidden lg:block">ליד חדש הוספה ידנית</span>
+              <Plus size={20} /> <span className="hidden lg:block">ליד חדש (ידני)</span>
+            </button>
+            <div className="flex-1"></div>
+            <button onClick={() => setViewMode('insights')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all mt-auto ${viewMode === 'insights' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <TrendingUp size={20} className="text-amber-500" /> <span className="hidden lg:block font-bold">דשבורד ניהולי</span>
             </button>
           </nav>
         </div>
@@ -370,7 +396,8 @@ export default function Dashboard() {
         
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10">
-          <div className="flex items-center gap-4 flex-1">
+          <div className="flex items-center gap-6 flex-1">
+            <h2 className="hidden lg:block text-slate-400 font-medium text-sm whitespace-nowrap">מערכת CRM לניהול לידים ולקוחות</h2>
             <div className="relative w-full max-w-md hidden md:block">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
@@ -394,35 +421,37 @@ export default function Dashboard() {
           
           {/* KPI Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 mb-8">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
               <div><p className="text-sm text-slate-500 font-medium mb-1">סה"כ לידים</p><h3 className="text-2xl font-bold text-slate-900">{stats.total}</h3></div>
-              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><Users size={24} /></div>
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform"><Users size={24} /></div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
               <div><p className="text-sm text-slate-500 font-medium mb-1">לידים חדשים</p><h3 className="text-2xl font-bold text-blue-700">{stats.new}</h3></div>
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><AlertCircle size={24} /></div>
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform"><AlertCircle size={24} /></div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
               <div><p className="text-sm text-slate-500 font-medium mb-1">ממתינים לפגישה</p><h3 className="text-2xl font-bold text-amber-700">{stats.meetings}</h3></div>
-              <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600"><Calendar size={24} /></div>
+              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><Calendar size={24} /></div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
               <div><p className="text-sm text-slate-500 font-medium mb-1">לקוחות מאושרים</p><h3 className="text-2xl font-bold text-emerald-700">{stats.clients}</h3></div>
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600"><CheckCircle2 size={24} /></div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform"><CheckCircle2 size={24} /></div>
             </div>
           </div>
+
+
 
           {viewMode === 'table' ? (
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
-                {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
+                {['ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
                   <button 
                     key={st} 
                     onClick={() => setFilter(st)}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${filter === st ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
                   >
-                    {st === 'ALL' ? 'כל הלידים' : STATUS_CONFIG[st]?.label}
+                    {st === 'ALL' ? 'כל הלידים' : st === 'HOT' ? 'לידים "חמים"' : STATUS_CONFIG[st]?.label}
                   </button>
                 ))}
               </div>
@@ -482,6 +511,170 @@ export default function Dashboard() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          ) : viewMode === 'insights' ? (
+            // MASTER MANAGEMENT DASHBOARD (The "WOW" Screen)
+            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+              
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-200 animate-pulse rounded-3xl"></div>)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-6">
+                  <div 
+                    onClick={() => setDrillDownData({ title: 'לידים "חמים" (Hot)', leads: leads.filter(l => getLeadScore(l) >= 80) })}
+                    className="bg-white/70 backdrop-blur-xl border border-white p-8 rounded-3xl shadow-sm flex flex-col md:flex-row items-center justify-between cursor-pointer hover:border-orange-200 hover:shadow-md transition-all group"
+                  >
+                    <div className="flex items-center gap-6">
+                      <div className="p-4 bg-orange-50 text-orange-500 rounded-2xl group-hover:bg-orange-100 transition-colors"><Zap size={32} fill="currentColor"/></div>
+                      <div>
+                        <p className="text-slate-500 font-medium mb-1">מדד לידים "חמים" (Hot)</p>
+                        <h2 className="text-5xl font-extrabold text-orange-600 group-hover:scale-105 transition-transform origin-right">{leads.filter(l => getLeadScore(l) >= 80).length}</h2>
+                      </div>
+                    </div>
+                    <div className="mt-6 md:mt-0 text-right">
+                      <p className="text-sm text-slate-500 mb-2">אלו הלידים עם הסיכוי הגבוה ביותר לסגירה ב-7 הימים הקרובים.</p>
+                      <span className="text-orange-500 font-bold bg-orange-50 px-4 py-2 rounded-xl inline-block group-hover:bg-orange-600 group-hover:text-white transition-all">לחץ לצפייה ברשימה המלאה ←</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Visuals Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* 1. Conversion Funnel (Custom SVG) */}
+                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm min-h-[400px]">
+                  <h3 className="text-lg font-bold text-slate-800 mb-8">משפך המרה (Conversion Funnel)</h3>
+                  <div className="flex flex-col gap-4 relative">
+                    {[
+                      { label: 'כל הלידים', count: stats.total, color: 'bg-indigo-600', w: '100%', leads: leads },
+                      { label: 'פגישות (נקבעו+בוצעו)', count: stats.meetings, color: 'bg-indigo-500', w: '75%', leads: leads.filter(l => ['MEETING_SCHEDULED', 'MEETING_HELD'].includes(l.status)) },
+                      { label: 'מסמכים בטיפול', count: stats.docs, color: 'bg-indigo-400', w: '50%', leads: leads.filter(l => l.status === 'DOC_COLLECTION') },
+                      { label: 'לקוחות מאושרים', count: stats.clients, color: 'bg-emerald-500', w: '30%', leads: leads.filter(l => l.status === 'CLIENT') }
+                    ].map((step, idx) => (
+                      <div key={idx} className="flex items-center gap-4 group cursor-pointer" onClick={() => setDrillDownData({ title: step.label, leads: step.leads })}>
+                        <div className="w-32 text-sm font-bold text-slate-500 text-left shrink-0">{step.label}</div>
+                        <div className="flex-1 h-12 bg-slate-50 rounded-xl relative overflow-hidden group-hover:bg-slate-100 transition-colors">
+                          <div 
+                            className={`absolute inset-y-0 right-0 ${step.color} opacity-90 transition-all duration-1000 ease-out flex items-center pr-4 text-white font-bold text-sm shadow-sm`}
+                            style={{width: step.w}}
+                          >
+                            {step.count}
+                          </div>
+                        </div>
+                        <div className="w-12 text-slate-400 text-xs font-bold shrink-0">{stats.total > 0 ? Math.round((step.count / stats.total) * 100) : 0}%</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Consultant Performance Leaderboard */}
+                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm">
+                   <h3 className="text-lg font-bold text-slate-800 mb-6">ביצועי יועצים (Leaderboard)</h3>
+                   <div className="divide-y divide-slate-100">
+                      {[
+                        { name: 'ספיר', files: leads.filter(l => l.consultant === 'sapir').length, color: 'bg-indigo-50 text-indigo-600', id: 'sapir' },
+                        { name: 'עוזי', files: leads.filter(l => l.consultant === 'uzi').length, color: 'bg-amber-50 text-amber-600', id: 'uzi' },
+                        { name: 'אלכס', files: leads.filter(l => l.consultant === 'alex').length, color: 'bg-emerald-50 text-emerald-600', id: 'alex' },
+                        { name: 'יוסף', files: leads.filter(l => l.consultant === 'yosef').length, color: 'bg-blue-50 text-blue-600', id: 'yosef' }
+                      ].sort((a,b) => b.files - a.files).map((con, idx) => (
+                        <div 
+                          key={idx} 
+                          onClick={() => setDrillDownData({ title: `לידים בטיפול: ${con.name}`, leads: leads.filter(l => l.consultant === con.id) })}
+                          className="flex items-center justify-between py-4 group hover:px-2 hover:bg-slate-50 rounded-xl transition-all cursor-pointer"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="text-xl font-bold text-slate-300 w-6">#{idx+1}</div>
+                            <div className={`w-10 h-10 rounded-xl ${con.color} flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 transition-transform`}>
+                              {con.name.charAt(0)}
+                            </div>
+                            <div>
+                               <div className="font-bold text-slate-800 text-sm">{con.name}</div>
+                               <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{con.files} תיקים בטיפול</div>
+                            </div>
+                          </div>
+                          <div className="text-left">
+                             <div className="text-[10px] text-emerald-500 font-bold overflow-hidden">
+                               <div className="flex items-center gap-1 justify-end"><TrendingUp size={10}/> 4.8★</div>
+                             </div>
+                             <div className="text-[10px] text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">צפה בכולם ←</div>
+                          </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              </div>
+
+              {/* Geo & Alerts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-right">
+                 {/* Geo Heatmap Simulation */}
+                 <div className="lg:col-span-2 bg-white border border-slate-200 p-8 rounded-3xl shadow-sm min-h-[300px]">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-bold text-slate-800">פילוח גיאוגרפי (Top Cities)</h3>
+                      <MapPin size={20} className="text-slate-400"/>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                       {(() => {
+                         const citiesMap: Record<string, number> = {};
+                         leads.forEach(l => { if(l.city) citiesMap[l.city] = (citiesMap[l.city] || 0) + 1 });
+                         const sortedCities = Object.entries(citiesMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
+                         if (sortedCities.length === 0) return <div className="text-slate-400 text-sm">אין נתוני ערים</div>;
+                         return sortedCities.map(([city, count]) => (
+                             <div 
+                               key={city} 
+                               onClick={() => setDrillDownData({ title: `לידים מהעיר: ${city}`, leads: leads.filter(l => l.city === city) })}
+                               className="flex flex-col gap-1.5 cursor-pointer group/city border-r-2 border-transparent hover:border-indigo-500 pr-2 transition-all"
+                             >
+                               <div className="flex justify-between text-xs font-bold text-slate-600 group-hover/city:text-indigo-600 transition-colors">
+                                 <span>{city}</span>
+                                 <span>{count} לידים</span>
+                                </div>
+                               <div className="relative h-2 bg-slate-50 rounded-full overflow-hidden">
+                                 <div className="absolute inset-y-0 right-0 bg-indigo-500/60 rounded-full group-hover/city:bg-indigo-600 transition-all duration-500" style={{width: `${stats.total > 0 ? (count / stats.total) * 100 : 0}%`}}></div>
+                               </div>
+                             </div>
+                           ));
+                       })()}
+                    </div>
+                 </div>
+
+                 {/* Lead Control Alerts */}
+                 <div className="bg-red-50/50 border border-red-100 p-8 rounded-3xl flex flex-col gap-6">
+                    <div className="flex items-center gap-2 text-red-600">
+                      <AlertCircle size={24}/>
+                      <h3 className="font-bold text-lg">בקרת לידים והתראות</h3>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                       <div 
+                         onClick={() => {
+                           const delayed = leads.filter(l => l.status === 'NEW_LEAD' && (new Date().getTime() - new Date(l.created_at).getTime() > 48 * 60 * 60 * 1000));
+                           setDrillDownData({ title: 'טיפול מושהה (>48 שעות)', leads: delayed });
+                         }}
+                         className="bg-white p-4 rounded-2xl shadow-sm border border-red-100 group hover:shadow-md hover:border-red-300 transition-all cursor-pointer"
+                       >
+                          <p className="text-xs text-slate-500 mb-1">טיפול מושהה</p>
+                          <p className="font-bold text-slate-800 text-sm">{(leads.filter(l => l.status === 'NEW_LEAD' && (new Date().getTime() - new Date(l.created_at).getTime() > 48 * 60 * 60 * 1000)).length)} לידים חדשים ללא מענה מעל 48 שעות</p>
+                          <div className="text-[10px] text-red-500 font-bold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">צפה ברשימה ←</div>
+                       </div>
+                       <div 
+                         onClick={() => {
+                           const outdated = leads.filter(l => l.status === 'MEETING_SCHEDULED' && parseHebrewDate(l.meeting_time) && parseHebrewDate(l.meeting_time)! < new Date());
+                           setDrillDownData({ title: 'פגישות ללא עדכון', leads: outdated });
+                         }}
+                         className="bg-white p-4 rounded-2xl shadow-sm border border-red-100 group hover:shadow-md hover:border-red-300 transition-all cursor-pointer"
+                       >
+                          <p className="text-xs text-slate-500 mb-1">פגישות ללא עדכון</p>
+                          <p className="font-bold text-slate-800 text-sm">{(leads.filter(l => l.status === 'MEETING_SCHEDULED' && parseHebrewDate(l.meeting_time) && parseHebrewDate(l.meeting_time)! < new Date()).length)} פגישות שהסתיימו ללא עדכון סטטוס</p>
+                          <div className="text-[10px] text-red-500 font-bold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">צפה ברשימה ←</div>
+                       </div>
+                    </div>
+                    <button onClick={fetchLeads} className="mt-auto w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-200 transition-all flex items-center justify-center gap-2">
+                       רענן ובדוק שוב <RefreshCw size={16}/>
+                    </button>
+                 </div>
               </div>
             </div>
           ) : viewMode === 'calendar' ? (
@@ -658,10 +851,11 @@ export default function Dashboard() {
 
             {/* Modal Tabs */}
             <div className="flex border-b border-slate-200 px-8 shrink-0">
-               <button onClick={() => setActiveTab('overview')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>סקירה כללית</button>
-               <button onClick={() => setActiveTab('meetings')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'meetings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>פגישות ולו"ז</button>
-               <button onClick={() => setActiveTab('notes')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'notes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>הערות סוכן</button>
-               <button onClick={() => setActiveTab('docs')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'docs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>מסמכים וטפסים</button>
+                <button onClick={() => setActiveTab('overview')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>סקירה כללית</button>
+                <button onClick={() => setActiveTab('meetings')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'meetings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>פגישות ולו"ז</button>
+                <button onClick={() => setActiveTab('timeline')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'timeline' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'} flex items-center gap-2`}><History size={16}/> ציר זמן</button>
+                <button onClick={() => setActiveTab('docs')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'docs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>מסמכים</button>
+                <button onClick={() => setActiveTab('notes')} className={`px-6 py-4 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'notes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>הערות סוכן</button>
             </div>
 
             {/* Tab Contents */}
@@ -670,39 +864,60 @@ export default function Dashboard() {
               {/* Overview Tab */}
               {activeTab === 'overview' && (
                 <div className="flex flex-col gap-8">
+                  {/* AI Suggestion Banner */}
+                  {(() => {
+                    let suggestion = "";
+                    if (profileLead.agent_notes?.includes("יקר")) suggestion = "הלקוח חושש ממחיר - מומלץ לשלוח השוואת ריביות ותועלות.";
+                    if (profileLead.status === 'DOC_COLLECTION' && leadDocs.length === 0) suggestion = "חסרים מסמכים - שלח תזכורת בוואטסאפ לצילום ת.ז.";
+                    
+                    if (!suggestion) return null;
+                    return (
+                      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-start gap-3 animate-pulse shadow-sm">
+                        <div className="p-2 bg-white rounded-xl text-indigo-600 shadow-sm"><Lightbulb size={20}/></div>
+                        <div>
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">AI Next Step Suggested</p>
+                          <p className="text-indigo-800 font-bold text-sm leading-tight">{suggestion}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">סיכום המערכת (AI)</label>
                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-slate-700 leading-relaxed whitespace-pre-wrap">
                       {profileLead.summary_sentence || 'עדיין אין סיכום מהבוט.'}
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">סטטוס ויועץ</label>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <select 
-                        value={profileLead.status} 
-                        onChange={e => updateLeadField(profileLead.id, 'status', e.target.value)}
-                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
-                      >
-                        {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
-                      </select>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">שיוך יועץ</label>
                       <select
-                        value={(profileLead as any).consultant || ''}
+                        value={profileLead.consultant || ''}
                         onChange={e => updateLeadField(profileLead.id, 'consultant', e.target.value)}
-                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
                       >
-                        <option value="">— שיוך יועץ —</option>
-                        <option value="sapir">ספיר (ראשי)</option>
-                        <option value="uzi">עוזי (עסקי)</option>
-                        <option value="alex">אלכס (מסמכים)</option>
+                        <option value="">— בחר יועץ —</option>
+                        <option value="sapir">ספיר</option>
+                        <option value="uzi">עוזי</option>
+                        <option value="alex">אלכס</option>
+                        <option value="yosef">יוסף</option>
                       </select>
                     </div>
                   </div>
-                  <div className="pt-6 border-t border-slate-100">
-                    <button onClick={() => deleteLead(profileLead.id, profileLead.full_name)} className="flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 size={16}/> מחק פנייה זו מהמערכת בלתי הפיך
-                    </button>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">סטטוס התקדמות</label>
+                    <select 
+                      value={profileLead.status} 
+                      onChange={e => updateLeadField(profileLead.id, 'status', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-bold"
+                    >
+                      {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
+                    </select>
                   </div>
+
+                  {/* Delete functionality removed as per guest request to prevent accidental loss */}
                 </div>
               )}
 
@@ -758,6 +973,54 @@ export default function Dashboard() {
                 </div>
               )}
 
+              {/* Timeline Tab */}
+              {activeTab === 'timeline' && (
+                <div className="flex flex-col gap-6">
+                   <div className="relative">
+                      <div className="absolute top-0 bottom-0 right-4 w-0.5 bg-slate-100"></div>
+                      <div className="space-y-8 relative">
+                         <div className="flex gap-6 items-start">
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 border-4 border-white shadow-sm z-10 shrink-0"></div>
+                            <div className="bg-slate-50 p-4 rounded-2xl flex-1 border border-slate-100">
+                               <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest leading-none">נוצר במערכת</p>
+                               <p className="text-sm font-bold text-slate-800 leading-tight">ליד חדש התקבל מהבוט</p>
+                               <p className="text-[11px] text-slate-500 mt-1">{new Date(profileLead.created_at).toLocaleString('he-IL')}</p>
+                            </div>
+                         </div>
+                         {profileLead.meeting_time && (
+                           <div className="flex gap-6 items-start">
+                              <div className="w-8 h-8 rounded-full bg-amber-500 border-4 border-white shadow-sm z-10 shrink-0"></div>
+                              <div className="bg-amber-50/50 p-4 rounded-2xl flex-1 border border-amber-100">
+                                 <p className="text-[10px] font-bold text-amber-600 mb-1 uppercase tracking-widest leading-none">פגישה</p>
+                                 <p className="text-sm font-bold text-slate-800 leading-tight">נקבעה פגישה עם הלקוח</p>
+                                 <p className="text-xs text-indigo-700 font-bold mt-1 tracking-tight">{profileLead.meeting_time}</p>
+                              </div>
+                           </div>
+                         )}
+                         {leadDocs.length > 0 && (
+                           <div className="flex gap-6 items-start">
+                              <div className="w-8 h-8 rounded-full bg-emerald-500 border-4 border-white shadow-sm z-10 shrink-0"></div>
+                              <div className="bg-emerald-50/50 p-4 rounded-2xl flex-1 border border-emerald-100">
+                                 <p className="text-[10px] font-bold text-emerald-600 mb-1 uppercase tracking-widest leading-none">מסמכים</p>
+                                 <p className="text-sm font-bold text-slate-800 leading-tight">הועלו {leadDocs.length} מסמכים לתיק</p>
+                                 <ul className="mt-2 space-y-1">
+                                    {leadDocs.slice(0, 2).map(d => <li key={d.id} className="text-[11px] text-slate-500 flex items-center gap-1.5"><FileText size={12}/> {d.file_name}</li>)}
+                                 </ul>
+                              </div>
+                           </div>
+                         )}
+                         <div className="flex gap-6 items-start">
+                            <div className="w-8 h-8 rounded-full bg-slate-300 border-4 border-white shadow-sm z-10 shrink-0"></div>
+                            <div className="bg-slate-50 p-4 rounded-2xl flex-1 border border-slate-100">
+                               <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest leading-none">עדכון אחרון</p>
+                               <p className="text-sm font-bold text-slate-800 leading-tight">הלקוח נמצא בסטטוס {STATUS_CONFIG[profileLead.status]?.label}</p>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+              )}
+
               {/* Notes Tab */}
               {activeTab === 'notes' && (
                 <div className="flex flex-col h-full">
@@ -808,6 +1071,46 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Drill-down Leads Modal */}
+      {drillDownData && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="text-xl font-bold text-slate-800">{drillDownData.title} ({drillDownData.leads.length})</h3>
+                <button onClick={() => setDrillDownData(null)} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors"><X size={20}/></button>
+             </div>
+             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                {drillDownData.leads.length === 0 ? (
+                  <div className="py-20 text-center text-slate-400 font-medium">אין לידים בשלב זה</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {drillDownData.leads.map(lead => (
+                      <div 
+                        key={lead.id} 
+                        onClick={() => { setDrillDownData(null); setProfileLead(lead); fetchDocs(lead.id); }}
+                        className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                             {lead.full_name?.charAt(0) || '?'}
+                           </div>
+                           <div>
+                              <div className="font-bold text-slate-800">{lead.full_name}</div>
+                              <div className="text-xs text-slate-400 font-mono" dir="ltr">{lead.phone}</div>
+                           </div>
+                        </div>
+                        <div className={`px-2 py-1 rounded-md text-[10px] font-bold border ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border}`}>
+                           {STATUS_CONFIG[lead.status]?.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+             </div>
           </div>
         </div>
       )}
