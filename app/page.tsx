@@ -3,10 +3,23 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
-  Users, LayoutDashboard, KanbanSquare, Settings, LogOut, 
+  Users, LayoutDashboard, KanbanSquare, LogOut, 
   Search, Plus, RefreshCw, Send, Calendar, Edit, FileText, 
-  Trash2, Mail, MapPin, Phone, CheckCircle2, AlertCircle, X
+  Trash2, Mail, MapPin, Phone, CheckCircle2, AlertCircle, X, ChevronRight, ChevronLeft
 } from 'lucide-react';
+
+// Tooltip wrapper — pure CSS, no library needed
+function Tip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="relative group/tip inline-flex">
+      {children}
+      <span className="pointer-events-none absolute bottom-full mb-2 right-1/2 translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white shadow-2xl opacity-0 group-hover/tip:opacity-100 transition-all duration-200 delay-200 z-[100]">
+        {label}
+        <span className="absolute top-full right-1/2 translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+      </span>
+    </span>
+  );
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,7 +78,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar'>('table');
+  const [calMonth, setCalMonth] = useState(new Date());
   
   // Modals & Profile
   const [profileLead, setProfileLead] = useState<Lead | null>(null);
@@ -83,6 +97,12 @@ export default function Dashboard() {
   
   // Kanban Drag & Drop
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
+
+  // Debounced agent notes — local state to prevent input lag
+  const [notesText, setNotesText] = useState('');
+  useEffect(() => {
+    if (profileLead) setNotesText(profileLead.agent_notes || '');
+  }, [profileLead?.id]);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
@@ -330,6 +350,9 @@ export default function Dashboard() {
             <button onClick={() => setViewMode('kanban')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'kanban' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
               <KanbanSquare size={20} /> <span className="hidden lg:block">ניהול תהליכים</span>
             </button>
+            <button onClick={() => setViewMode('calendar')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-all ${viewMode === 'calendar' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <Calendar size={20} /> <span className="hidden lg:block">יומן פגישות</span>
+            </button>
             <button onClick={() => setManualModal(true)} className="flex items-center gap-3 w-full p-3 rounded-xl font-medium text-slate-500 hover:bg-slate-50 transition-all">
               <Plus size={20} /> <span className="hidden lg:block">ליד חדש הוספה ידנית</span>
             </button>
@@ -393,7 +416,7 @@ export default function Dashboard() {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
-                {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT'].map(st => (
+                {['ALL', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
                   <button 
                     key={st} 
                     onClick={() => setFilter(st)}
@@ -414,6 +437,7 @@ export default function Dashboard() {
                       <th className="py-4 px-6 font-semibold text-right">מועד פגישה</th>
                       <th className="py-4 px-6 font-semibold text-right hidden lg:table-cell">עיר</th>
                       <th className="py-4 px-6 font-semibold text-right hidden xl:table-cell">תקציר AI</th>
+                      <th className="py-4 px-6 font-semibold text-right hidden 2xl:table-cell">הערות סוכן</th>
                       <th className="py-4 px-6 font-semibold text-right">פעולות</th>
                     </tr>
                   </thead>
@@ -439,14 +463,17 @@ export default function Dashboard() {
                               {lead.meeting_time || <span className="text-slate-400">טרם נקבע</span>}
                             </td>
                             <td className="py-4 px-6 text-sm text-slate-600 hidden lg:table-cell">{lead.city || '—'}</td>
-                            <td className="py-4 px-6 text-sm text-slate-600 hidden xl:table-cell max-w-xs truncate">
-                              {lead.summary_sentence || 'אין תקציר'}
+                            <td className="py-4 px-6 text-sm text-slate-600 hidden xl:table-cell max-w-xs">
+                              <div className="whitespace-normal leading-relaxed line-clamp-3">{lead.summary_sentence || 'אין תקציר'}</div>
+                            </td>
+                            <td className="py-4 px-6 text-sm text-slate-600 hidden 2xl:table-cell" style={{minWidth: 200, maxWidth: 280}}>
+                              <div className="whitespace-normal leading-relaxed line-clamp-4 text-slate-500">{lead.agent_notes || '—'}</div>
                             </td>
                             <td className="py-4 px-6">
-                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="פתח פרופיל מלא" onClick={(e) => { e.stopPropagation(); setProfileLead(lead); fetchDocs(lead.id); }}><Edit size={16}/></button>
-                                <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="שלח לוואטסאפ" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phone}`, '_blank'); }}><Send size={16}/></button>
-                                <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="מחק" onClick={(e) => { e.stopPropagation(); deleteLead(lead.id, lead.full_name); }}><Trash2 size={16}/></button>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Tip label="פתח פרופיל"><button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" onClick={(e) => { e.stopPropagation(); setProfileLead(lead); fetchDocs(lead.id); }}><Edit size={16}/></button></Tip>
+                                <Tip label="פתח וואטסאפ"><button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phone}`, '_blank'); }}><Send size={16}/></button></Tip>
+                                <Tip label="מחק ליד"><button className="p-2 text-red-500 hover:bg-red-50 rounded-lg" onClick={(e) => { e.stopPropagation(); deleteLead(lead.id, lead.full_name); }}><Trash2 size={16}/></button></Tip>
                               </div>
                             </td>
                           </tr>
@@ -457,6 +484,62 @@ export default function Dashboard() {
                 </table>
               </div>
             </div>
+          ) : viewMode === 'calendar' ? (
+            // Monthly Calendar View
+            (() => {
+              const year = calMonth.getFullYear();
+              const month = calMonth.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const today = new Date();
+              const dayLabels = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+              const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({length: daysInMonth}, (_, i) => i + 1)];
+              const meetingLeads = leads.filter(l => l.meeting_time && parseHebrewDate(l.meeting_time));
+
+              function getMeetingsForDay(day: number) {
+                return meetingLeads.filter(l => {
+                  const d = parseHebrewDate(l.meeting_time);
+                  return d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+                });
+              }
+
+              return (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  {/* Cal Header */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                    <Tip label="חודש קודם"><button onClick={() => setCalMonth(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronRight size={20}/></button></Tip>
+                    <h2 className="text-lg font-bold text-slate-800">{calMonth.toLocaleString('he-IL', {month: 'long', year: 'numeric'})}</h2>
+                    <Tip label="חודש הבא"><button onClick={() => setCalMonth(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-lg"><ChevronLeft size={20}/></button></Tip>
+                  </div>
+                  {/* Day Labels */}
+                  <div className="grid grid-cols-7 border-b border-slate-100">
+                    {dayLabels.map(d => <div key={d} className="py-2 text-center text-xs font-bold text-slate-400">{d}</div>)}
+                  </div>
+                  {/* Day Cells */}
+                  <div className="grid grid-cols-7">
+                    {cells.map((day, idx) => {
+                      if (!day) return <div key={idx} className="min-h-[100px] border-b border-l border-slate-100 bg-slate-50/30" />;
+                      const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+                      const dayMeetings = getMeetingsForDay(day);
+                      return (
+                        <div key={idx} className={`min-h-[100px] p-2 border-b border-l border-slate-100 ${isToday ? 'bg-indigo-50/40' : 'hover:bg-slate-50'}`}>
+                          <div className={`text-sm font-bold mb-1 w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white' : 'text-slate-700'}`}>{day}</div>
+                          <div className="flex flex-col gap-1">
+                            {dayMeetings.slice(0, 3).map(l => (
+                              <button key={l.id} onClick={() => { setProfileLead(l); fetchDocs(l.id); setActiveTab('meetings'); }}
+                                className="text-right text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors truncate w-full">
+                                {l.meeting_time?.match(/(\d{2}):(\d{2})/)?.[0]} {l.full_name}
+                              </button>
+                            ))}
+                            {dayMeetings.length > 3 && <span className="text-[10px] text-slate-400 text-center">+{dayMeetings.length - 3} נוספים</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             // Kanban Pipeline View
             <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-200px)] items-start">
@@ -519,7 +602,32 @@ export default function Dashboard() {
                 <label className="block text-sm font-semibold text-slate-700 mb-1">טלפון נייד</label>
                 <input required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:bg-white transition-colors text-left" dir="ltr" value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} placeholder="050-0000000" />
               </div>
-              <button type="submit" className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors">שמור במערכת</button>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">יישוב</label>
+                <input
+                  list="city-suggestions"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+                  value={newLead.city}
+                  onChange={e => setNewLead({...newLead, city: e.target.value})}
+                  placeholder="הקלד עיר..."
+                />
+                <datalist id="city-suggestions">
+                  {['נצרת','כפר קרע','בקה אל-גרביה','טמרה','שפרעם','סח\'נין','אום אל-פחם','עראבה','דייר חנא','עכו','חיפה','ריינה','ירכא','מגאר','כאבול','עילבון','בית ג\'ן','מע\'אר','כסרא','פסוטה','בועינה נוג\'ידאת','עין מאהל','כפר ברא','טייבה','כפר סבא','לוד'].map(c => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">סיכום ראשוני</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:bg-white transition-colors resize-none"
+                  rows={3}
+                  value={newLead.summary_sentence}
+                  onChange={e => setNewLead({...newLead, summary_sentence: e.target.value})}
+                  placeholder="פרטים על הלוואה, מטרה, סכום..."
+                />
+              </div>
+              <button type="submit" className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors">שמור במערכת</button>
             </form>
           </div>
         </div>
@@ -569,14 +677,26 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">עדכון סטטוס ידני</label>
-                    <select 
-                      value={profileLead.status} 
-                      onChange={e => updateLeadField(profileLead.id, 'status', e.target.value)}
-                      className="w-full max-w-sm bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
-                    >
-                      {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
-                    </select>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">סטטוס ויועץ</label>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <select 
+                        value={profileLead.status} 
+                        onChange={e => updateLeadField(profileLead.id, 'status', e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
+                      >
+                        {Object.keys(STATUS_CONFIG).map(sk => <option key={sk} value={sk}>{STATUS_CONFIG[sk].label}</option>)}
+                      </select>
+                      <select
+                        value={(profileLead as any).consultant || ''}
+                        onChange={e => updateLeadField(profileLead.id, 'consultant', e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-medium"
+                      >
+                        <option value="">— שיוך יועץ —</option>
+                        <option value="sapir">ספיר (ראשי)</option>
+                        <option value="uzi">עוזי (עסקי)</option>
+                        <option value="alex">אלכס (מסמכים)</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="pt-6 border-t border-slate-100">
                     <button onClick={() => deleteLead(profileLead.id, profileLead.full_name)} className="flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold text-sm px-4 py-2 hover:bg-red-50 rounded-lg transition-colors">
@@ -598,11 +718,26 @@ export default function Dashboard() {
                     ) : (
                       <div className="bg-white p-4 rounded-xl border border-slate-200 text-slate-500 mb-6">לא נקבעה פגישה</div>
                     )}
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                       <button onClick={() => addToCalendar(profileLead)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold shadow-md transition-colors flex justify-center items-center gap-2"><Calendar size={18}/> סנכרן לגוגל יומן</button>
                       <button onClick={() => shareByEmail(profileLead)} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 p-3 rounded-xl font-semibold transition-colors shadow-sm"><Mail size={20}/></button>
                       <button onClick={() => window.open(`https://wa.me/${profileLead.phone}`, '_blank')} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-xl font-semibold transition-colors shadow-sm"><Send size={20}/></button>
                     </div>
+                    {profileLead.meeting_time && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm('לבטל את הפגישה ולשלוח מייל ללקוח?')) return;
+                          await updateLeadField(profileLead.id, 'meeting_time', null);
+                          await updateLeadField(profileLead.id, 'status', 'CANCELLED');
+                          const body = encodeURIComponent(`שלום ${profileLead.full_name},\n\nאנו מתנצלים, הפגישה שנקבעה בוטלה.\nנשמח לתאם עמך מועד חדש בהקדם.\n\nבברכה,\nצוות אדמתנו ביתנו משכנתאות`);
+                          const sub = encodeURIComponent(`ביטול פגישה — ${profileLead.full_name}`);
+                          window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${sub}&body=${body}`, '_blank');
+                        }}
+                        className="mt-4 w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-2.5 rounded-xl font-semibold transition-colors"
+                      >
+                        <X size={16}/> ביטול פגישה
+                      </button>
+                    )}
                   </div>
                   <div className="flex-1 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
                     <h3 className="font-bold text-slate-800 mb-4">קביעת/עדכון מועד ידני</h3>
@@ -628,8 +763,9 @@ export default function Dashboard() {
                 <div className="flex flex-col h-full">
                   <p className="text-sm text-slate-500 mb-4">אזור אישי לתיעוד מידע, הערות פנימיות והתקדמות אישית. (הלקוח לא רואה זאת).</p>
                   <textarea 
-                    value={profileLead.agent_notes || ''} 
-                    onChange={e => updateLeadField(profileLead.id, 'agent_notes', e.target.value)}
+                    value={notesText} 
+                    onChange={e => setNotesText(e.target.value)}
+                    onBlur={() => updateLeadField(profileLead.id, 'agent_notes', notesText)}
                     placeholder="הקלד/י כאן..."
                     className="w-full flex-1 min-h-[300px] p-5 rounded-2xl bg-amber-50/50 border border-amber-100 text-slate-800 leading-relaxed outline-none focus:border-amber-300 focus:bg-amber-50 transition-colors resize-none"
                   />
