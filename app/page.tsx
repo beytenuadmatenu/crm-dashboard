@@ -55,9 +55,9 @@ const s = {
   filters: { display: 'flex' as const, gap: 8, marginBottom: 24, flexWrap: 'nowrap' as const, alignItems: 'center', overflowX: 'auto' as const, paddingBottom: 8 },
   input:   { flex: '0 0 250px', border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 14px', fontSize: 13, outline: 'none', background: '#fff' },
   fbtn:    (active: boolean): CSSProperties => ({ padding: '8px 12px', border: '1px solid', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: active ? '#0F172A' : '#fff', color: active ? '#fff' : '#475569', borderColor: active ? '#0F172A' : '#CBD5E1', whiteSpace: 'nowrap' as const }),
-  tableWrapper: { background: '#fff', borderRadius: 12, overflowX: 'auto' as const, border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(0,0,0,.05)' },
+  tableWrapper: { background: '#fff', borderRadius: 12, overflowX: 'auto' as const, overflowY: 'auto' as const, maxHeight: 'calc(100vh - 220px)', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(0,0,0,.05)' },
   table:   { width: '100%', borderCollapse: 'collapse' as const },
-  th:      { padding: '12px 10px', textAlign: 'right' as const, fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: 1, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' },
+  th:      { padding: '12px 10px', textAlign: 'right' as const, fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: 1, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', position: 'sticky' as const, top: 0, zIndex: 2 },
   td:      { padding: '12px 10px', fontSize: 12, color: '#334155', borderBottom: '1px solid #F1F5F9', verticalAlign: 'top' as const },
   badge:   (s: string): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: STATUS_CONFIG[s]?.bg || '#F1F5F9', color: STATUS_CONFIG[s]?.color || '#64748B' }),
   dot:     (s: string): CSSProperties => ({ width: 6, height: 6, borderRadius: '50%', background: STATUS_CONFIG[s]?.dot || '#94A3B8' }),
@@ -675,13 +675,13 @@ export default function Home() {
                       <td style={{ ...s.td, fontWeight: 700, color: '#0F172A' }}>{lead.full_name || '—'}</td>
                       <td style={{ ...s.td, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace' }}>{lead.phone}</td>
                       <td style={s.td}>{lead.city || '—'}</td>
-                      <td style={{ ...s.td, width: '30%', minWidth: 250 }}>
+                      <td style={{ ...s.td, width: '25%', minWidth: 200 }}>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', fontSize: 12 }}>{lead.summary_sentence || '—'}</div>
                       </td>
                       <td style={{ ...s.td, whiteSpace: 'nowrap' }}>{lead.meeting_time || '—'}</td>
                       <td style={s.td}>
                         {editingNoteId === lead.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 240 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
                             <textarea
                               style={s.notesArea}
                               autoFocus
