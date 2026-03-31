@@ -55,13 +55,14 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
   MEETING_SCHEDULED: { label: 'נקבעה פגישה', color: 'text-amber-700', bg: 'bg-amber-50', dot: 'bg-amber-500', border: 'border-amber-200' },
   CALL_BACK_LATER: { label: 'לחזור אח"כ', color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500', border: 'border-purple-200' },
   DOC_COLLECTION: { label: 'איסוף מסמכים', color: 'text-sky-700', bg: 'bg-sky-50', dot: 'bg-sky-500', border: 'border-sky-200' },
+  APPRAISALS_AND_SIGNATURES: { label: 'שמאות וחתימות', color: 'text-pink-700', bg: 'bg-pink-50', dot: 'bg-pink-500', border: 'border-pink-200' },
   MEETING_HELD: { label: 'התקיימה פגישה', color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500', border: 'border-emerald-200' },
   CLIENT: { label: 'אושר', color: 'text-green-800', bg: 'bg-green-100', dot: 'bg-green-600', border: 'border-green-300' },
   CANCELLED: { label: 'לא רלוונטי', color: 'text-slate-600', bg: 'bg-slate-100', dot: 'bg-slate-400', border: 'border-slate-200' },
 };
 
 // Kanban Pipeline Columns logic
-const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'MEETING_HELD', 'DOC_COLLECTION', 'CLIENT'];
+const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'MEETING_HELD', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CLIENT'];
 
 function parseHebrewDate(dateStr: string): Date | null {
   if (!dateStr || dateStr === '—' || dateStr === 'בוטל') return null;
@@ -87,6 +88,7 @@ export default function Dashboard() {
   // Modals & Profile
   const [profileLead, setProfileLead] = useState<Lead | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'docs' | 'meetings' | 'timeline'>('overview');
   const [leadDocs, setLeadDocs] = useState<LeadDoc[]>([]);
   const [manualModal, setManualModal] = useState(false);
@@ -111,19 +113,59 @@ export default function Dashboard() {
     if (profileLead) setNotesText(profileLead.agent_notes || '');
   }, [profileLead?.id]);
 
+  // Clock state
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [loggedUser, setLoggedUser] = useState<{username: string, role: string, displayName: string} | null>(null);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
+
+  const USERS = [
+    { username: 'sapir', pass: 'S102030!', role: 'admin', displayName: 'ספיר' },
+    { username: 'uzi', pass: '123456', role: 'consultant', displayName: 'עוזי' },
+    { username: 'alex', pass: '123456', role: 'consultant', displayName: 'אלכס' },
+    { username: 'yosef', pass: '123456', role: 'consultant', displayName: 'יוסף' }
+  ];
 
   useEffect(() => {
     const auth = sessionStorage.getItem('crm_auth');
-    setIsAuthenticated(auth === 'true');
+    if (auth) {
+      setIsAuthenticated(true);
+      let user = JSON.parse(auth);
+      // Re-hydrate name if missing from old session
+      if (user && user.username) {
+        if (!user.displayName) {
+          const found = USERS.find(u => u.username.toLowerCase() === user.username.toLowerCase());
+          if (found) {
+            user.displayName = found.displayName;
+            sessionStorage.setItem('crm_auth', JSON.stringify(user));
+          }
+        }
+        setLoggedUser(user);
+        if (user.role === 'consultant') setFilter('MY_LEADS');
+      } else {
+        // Invalid session, clear and logout
+        sessionStorage.removeItem('crm_auth');
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
   }, []);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (loginForm.user.toUpperCase() === 'SAPIR' && loginForm.pass === 'S102030!') {
+    const user = USERS.find(u => u.username.toLowerCase() === loginForm.user.toLowerCase() && u.pass === loginForm.pass);
+    if (user) {
       setIsAuthenticated(true);
-      sessionStorage.setItem('crm_auth', 'true');
+      const userData = { username: user.username, role: user.role, displayName: user.displayName };
+      setLoggedUser(userData);
+      sessionStorage.setItem('crm_auth', JSON.stringify(userData));
+      if (userData.role === 'consultant') setFilter('MY_LEADS');
     } else {
       alert('פרטי התחברות שגויים');
     }
@@ -131,6 +173,7 @@ export default function Dashboard() {
 
   function handleLogout() {
     setIsAuthenticated(false);
+    setLoggedUser(null);
     sessionStorage.removeItem('crm_auth');
   }
 
@@ -150,7 +193,7 @@ export default function Dashboard() {
   async function updateLeadField(id: string, field: string, value: any) {
     const { error } = await supabase.from('leads').update({ [field]: value }).eq('id', id);
     if (error) {
-       alert('שגיאה בעדכון');
+       alert('שגיאה בעדכון: ' + error.message);
     } else {
        setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
        if (profileLead?.id === id) {
@@ -300,9 +343,9 @@ export default function Dashboard() {
 
   const filtered = useMemo(() =>
     leads.filter(l =>
-      (filter === 'ALL' || l.status === filter || (filter === 'HOT' && getLeadScore(l) >= 80)) &&
+      (filter === 'ALL' || l.status === filter || (filter === 'HOT' && getLeadScore(l) >= 80) || (filter === 'MY_LEADS' && l.consultant === loggedUser?.username)) &&
       (search === '' || [l.full_name, l.phone, l.city, l.summary_sentence, l.agent_notes].some(v => v?.includes(search)))
-    ), [leads, filter, search]);
+    ), [leads, filter, search, loggedUser]);
 
   const stats = useMemo(() => ({
     total: leads.length,
@@ -411,7 +454,9 @@ export default function Dashboard() {
             <button onClick={() => setIsMenuOpen(true)} className="lg:hidden p-2 text-slate-500 hover:bg-slate-50 rounded-lg">
               <LayoutDashboard size={24} />
             </button>
-            <h2 className="hidden lg:block text-slate-400 font-medium text-sm whitespace-nowrap">מערכת CRM לניהול לידים ולקוחות</h2>
+            <h2 className="hidden lg:block text-slate-400 font-medium text-sm whitespace-nowrap">
+              מערכת CRM לניהול לידים ולקוחות
+            </h2>
             <div className="lg:hidden font-bold text-slate-800">אדמתנו ביתנו</div>
             
             <div className="relative w-full max-w-md hidden md:block">
@@ -425,9 +470,23 @@ export default function Dashboard() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 lg:gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="hidden lg:flex flex-col items-end justify-center px-4 border-l border-slate-200">
+               <span className="text-xs font-bold text-slate-800">{currentTime.toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
+               <span className="text-[10px] text-slate-400 font-medium">{currentTime.toLocaleDateString('he-IL')}</span>
+            </div>
+            {loggedUser && loggedUser.displayName && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 hidden sm:flex">
+                <span className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">
+                  {loggedUser.displayName.charAt(0)}
+                </span>
+                <span className="text-xs font-bold text-slate-600">{loggedUser.displayName}</span>
+              </div>
+            )}
             <div className="md:hidden relative">
-               <button onClick={() => {/* Focus mobile search */}} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><Search size={20}/></button>
+               <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-lg transition-all ${isSearchOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}>
+                 {isSearchOpen ? <X size={20}/> : <Search size={20}/>}
+               </button>
             </div>
             <button onClick={fetchLeads} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="רענן נתונים">
               <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
@@ -435,48 +494,65 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {/* Mobile Search Overlay */}
+        {isSearchOpen && (
+          <div className="md:hidden bg-white border-b border-slate-200 p-4 absolute top-16 left-0 right-0 z-20 shadow-sm animate-in slide-in-from-top-2">
+            <div className="relative w-full">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="חפש ליד, טלפון, עיר..." 
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 pr-10 pl-4 text-sm outline-none focus:border-indigo-500 transition-all font-bold"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Workspace */}
         <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6 lg:p-8">
           
-          {/* KPI Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-              <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">סה"כ לידים</p><h3 className="text-xl lg:text-2xl font-bold text-slate-900">{stats.total}</h3></div>
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform"><Users size={24} /></div>
+          {/* KPI Stats Grid - Only on insights view */}
+          {viewMode === 'insights' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8 animate-in slide-in-from-top-4 duration-500">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
+                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">סה"כ לידים</p><h3 className="text-xl lg:text-2xl font-bold text-slate-900">{stats.total}</h3></div>
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform"><Users size={24} /></div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
+                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">לידים חדשים</p><h3 className="text-xl lg:text-2xl font-bold text-blue-700">{stats.new}</h3></div>
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform"><AlertCircle size={24} /></div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
+                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">ממתינים לפגישה</p><h3 className="text-xl lg:text-2xl font-bold text-amber-700">{stats.meetings}</h3></div>
+                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><Calendar size={24} /></div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
+                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">לקוחות מאושרים</p><h3 className="text-xl lg:text-2xl font-bold text-emerald-700">{stats.clients}</h3></div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform"><CheckCircle2 size={24} /></div>
+              </div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-              <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">לידים חדשים</p><h3 className="text-xl lg:text-2xl font-bold text-blue-700">{stats.new}</h3></div>
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform"><AlertCircle size={24} /></div>
-            </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-              <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">ממתינים לפגישה</p><h3 className="text-xl lg:text-2xl font-bold text-amber-700">{stats.meetings}</h3></div>
-              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><Calendar size={24} /></div>
-            </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-              <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">לקוחות מאושרים</p><h3 className="text-xl lg:text-2xl font-bold text-emerald-700">{stats.clients}</h3></div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform"><CheckCircle2 size={24} /></div>
-            </div>
-          </div>
-
-
+          )}
 
           {viewMode === 'table' ? (
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
-                {['ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
+                {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
                   <button 
                     key={st} 
                     onClick={() => setFilter(st)}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${filter === st ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
                   >
-                    {st === 'ALL' ? 'כל הלידים' : st === 'HOT' ? 'לידים "חמים"' : STATUS_CONFIG[st]?.label}
+                    {st === 'ALL' ? 'כל הלידים' : st === 'HOT' ? 'לידים "חמים"' : st === 'MY_LEADS' ? 'הלידים שלי' : STATUS_CONFIG[st]?.label}
                   </button>
                 ))}
               </div>
 
               {/* Standard Table View (Desktop Only) */}
-              <div className="hidden lg:block overflow-auto h-[calc(100vh-320px)] border border-slate-100 rounded-xl shadow-sm bg-white scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="hidden lg:block overflow-auto h-[calc(100vh-210px)] border border-slate-100 rounded-xl shadow-sm bg-white scrollbar-thin scrollbar-thumb-slate-200">
                 <table className="w-full text-right border-collapse">
                   <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10 transition-all">
                     <tr>
@@ -484,20 +560,21 @@ export default function Dashboard() {
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">סטטוס</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">מועד פגישה</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">עיר</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">תקציר AI</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">יועץ</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">סיכום ראשוני</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">הערות סוכן</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">נוצר ב-</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">פעולות</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="bg-white">
                     {filtered.map(lead => (
                       <tr 
                         key={lead.id} 
                         onClick={() => { setProfileLead(lead); fetchDocs(lead.id); }}
                         className="hover:bg-indigo-50/50 cursor-pointer transition-all group border-r-4 border-transparent hover:border-indigo-500"
                       >
-                        <td className="px-6 py-5 whitespace-normal">
+                        <td className="px-6 py-5 whitespace-normal border-b border-slate-200">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0 ring-2 ring-white shadow-sm group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-all">
                               {lead.full_name?.charAt(0) || 'L'}
@@ -508,32 +585,37 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-5 whitespace-normal text-center w-[140px]">
-                          <span className={`px-2.5 py-1 rounded-full text-sm font-normal ring-1 ring-inset ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border} shadow-sm inline-flex items-center gap-1.5`}>
+                        <td className="px-4 py-3 whitespace-nowrap text-center text-xs border-b border-slate-200">
+                          <span className={`px-2.5 py-1 rounded-full font-medium ring-1 ring-inset ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border} shadow-sm inline-flex items-center gap-1.5`}>
                             <span className={`w-1 h-1 rounded-full ${STATUS_CONFIG[lead.status]?.dot}`}></span>
                             {STATUS_CONFIG[lead.status]?.label}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-sm text-slate-600 font-normal w-[160px]">
-                           <div className="whitespace-normal leading-relaxed">
+                        <td className="px-6 py-5 text-sm text-slate-600 font-normal border-b border-slate-200">
+                           <div className="whitespace-normal leading-relaxed max-w-[140px]">
                              {lead.meeting_time || <span className="text-slate-300 italic">טרם נקבע</span>}
                            </div>
                         </td>
-                        <td className="px-6 py-5 whitespace-normal text-sm text-slate-600 font-normal text-right w-[120px]">{lead.city || '—'}</td>
-                        <td className="px-6 py-5 max-w-[250px] transition-all text-right">
-                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal">
+                        <td className="px-6 py-5 whitespace-normal text-sm text-slate-600 font-normal text-right border-b border-slate-200">{lead.city || '—'}</td>
+                        <td className="px-6 py-5 border-b border-slate-200">
+                           <span className={`px-2 py-1 rounded-lg text-xs font-bold border whitespace-nowrap inline-block ${lead.consultant ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-slate-50 text-slate-300 border-dashed border-slate-200'}`}>
+                             {lead.consultant || 'טרם שויך'}
+                           </span>
+                        </td>
+                        <td className="px-6 py-5 border-b border-slate-200 text-right">
+                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[180px] line-clamp-2">
                             {lead.summary_sentence || '—'}
                           </div>
                         </td>
-                        <td className="px-6 py-5 max-w-[250px] transition-all border-r border-slate-50/50">
-                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal">
+                        <td className="px-6 py-5 border-b border-slate-200">
+                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[250px] line-clamp-2">
                             {lead.agent_notes || '—'}
                           </div>
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-400 font-normal font-sans">
+                        <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-400 font-normal font-sans border-b border-slate-200">
                           {new Date(lead.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', year: '2-digit'})}
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap text-center w-[120px]">
+                        <td className="px-6 py-5 whitespace-nowrap text-center border-b border-slate-200">
                           <div className="flex items-center justify-center gap-1.5">
                              <Tip label="צפה בפרופיל">
                                <button 
@@ -1004,14 +1086,36 @@ export default function Dashboard() {
             <div className="bg-slate-50 border-b border-slate-200 px-6 lg:px-8 py-4 lg:py-6 shrink-0 flex justify-between items-start">
                <div className="flex-1">
                   <div className="flex items-center flex-wrap gap-2 lg:gap-3 mb-1 lg:mb-2">
-                    <h2 className="text-xl lg:text-2xl font-bold text-slate-900 truncate max-w-[200px] lg:max-w-none">{profileLead.full_name || 'לקוח ללא שם'}</h2>
+                    <input 
+                      defaultValue={profileLead.full_name || ''} 
+                      onBlur={e => { if(e.target.value !== profileLead.full_name) updateLeadField(profileLead.id, 'full_name', e.target.value) }}
+                      className="text-xl lg:text-2xl font-bold text-slate-900 max-w-[200px] lg:max-w-xs bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded-lg px-2 py-0.5 outline-none transition-all placeholder-slate-300"
+                      placeholder="שם הלקוח"
+                    />
                     <span className={`px-2 py-0.5 lg:px-2.5 lg:py-1 text-[10px] lg:text-xs font-bold rounded-lg border ${STATUS_CONFIG[profileLead.status]?.bg} ${STATUS_CONFIG[profileLead.status]?.color} ${STATUS_CONFIG[profileLead.status]?.border}`}>
                       {STATUS_CONFIG[profileLead.status]?.label}
                     </span>
                   </div>
-                  <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
-                    <span className="flex items-center gap-1.5"><Phone size={14} className="text-indigo-500"/> <span dir="ltr">{profileLead.phone}</span></span>
-                    {profileLead.city && <span className="flex items-center gap-1.5"><MapPin size={14} className="text-indigo-500"/> {profileLead.city}</span>}
+                  <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 font-medium px-2">
+                    <div className="flex items-center gap-1.5 group relative">
+                       <Phone size={14} className="text-indigo-500 absolute right-0 pointer-events-none"/> 
+                       <input 
+                         dir="ltr" 
+                         defaultValue={profileLead.phone || ''} 
+                         onBlur={e => { if(e.target.value !== profileLead.phone) updateLeadField(profileLead.id, 'phone', e.target.value) }}
+                         className="text-left bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded-md pl-2 pr-6 py-0.5 outline-none transition-all w-[110px]"
+                         placeholder="050-0000000"
+                       />
+                    </div>
+                    <div className="flex items-center gap-1.5 group relative">
+                       <MapPin size={14} className="text-indigo-500 absolute right-0 pointer-events-none"/>
+                       <input 
+                         defaultValue={profileLead.city || ''} 
+                         onBlur={e => { if(e.target.value !== profileLead.city) updateLeadField(profileLead.id, 'city', e.target.value) }}
+                         className="bg-transparent border border-transparent hover:border-slate-300 focus:border-indigo-500 focus:bg-white rounded-md pr-6 pl-2 py-0.5 outline-none transition-all w-[100px]"
+                         placeholder="עיר מגורים"
+                       />
+                    </div>
                   </div>
                </div>
                <button onClick={() => setProfileLead(null)} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors lg:mr-4"><X size={24}/></button>
@@ -1020,10 +1124,10 @@ export default function Dashboard() {
             {/* Modal Tabs - Horizontal Scrollable on Mobile */}
             <div className="flex border-b border-slate-200 px-4 lg:px-8 overflow-x-auto no-scrollbar shrink-0 bg-white">
                 <button onClick={() => setActiveTab('overview')} className={`px-4 lg:px-6 py-4 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}>סקירה כללית</button>
+                <button onClick={() => setActiveTab('notes')} className={`px-4 lg:px-6 py-4 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === 'notes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}>הערות סוכן</button>
                 <button onClick={() => setActiveTab('meetings')} className={`px-4 lg:px-6 py-4 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === 'meetings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}>פגישות ולו"ז</button>
                 <button onClick={() => setActiveTab('timeline')} className={`px-4 lg:px-6 py-4 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === 'timeline' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'} flex items-center gap-1.5`}><History size={16}/> ציר זמן</button>
                 <button onClick={() => setActiveTab('docs')} className={`px-4 lg:px-6 py-4 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === 'docs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}>מסמכים</button>
-                <button onClick={() => setActiveTab('notes')} className={`px-4 lg:px-6 py-4 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${activeTab === 'notes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}>הערות סוכן</button>
             </div>
 
             {/* Tab Contents */}
@@ -1085,7 +1189,25 @@ export default function Dashboard() {
                     </select>
                   </div>
 
-                  {/* Delete functionality removed as per guest request to prevent accidental loss */}
+                  {loggedUser?.role === 'admin' && (
+                    <div className="pt-6 border-t border-slate-100 flex justify-end">
+                       <button
+                         onClick={async () => {
+                           if (!confirm(`האם אתה בטוח שברצונך למחוק את הליד של ${profileLead.full_name}?`)) return;
+                           const { error } = await supabase.from('leads').delete().eq('id', profileLead.id);
+                           if (error) {
+                             alert('שגיאה במחיקה: ' + error.message);
+                           } else {
+                             setLeads(prev => prev.filter(l => l.id !== profileLead.id));
+                             setProfileLead(null);
+                           }
+                         }}
+                         className="flex items-center gap-2 text-red-500 hover:text-red-700 font-bold text-sm p-3 hover:bg-red-50 rounded-xl transition-all"
+                       >
+                         <Trash2 size={18}/> מחק ליד לצמיתות
+                       </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1191,15 +1313,38 @@ export default function Dashboard() {
 
               {/* Notes Tab */}
               {activeTab === 'notes' && (
-                <div className="flex flex-col h-full">
-                  <p className="text-sm text-slate-500 mb-4">אזור אישי לתיעוד מידע, הערות פנימיות והתקדמות אישית. (הלקוח לא רואה זאת).</p>
+                <div className="flex flex-col h-full gap-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-slate-500">פירוט שיחות, הערות פנימיות ותיעוד התקדמות.</p>
+                    <button 
+                      onClick={() => {
+                        const now = new Date();
+                        const timeStr = `${now.getDate()}/${now.getMonth()+1} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                        const signature = `\n[${loggedUser?.displayName || 'יועץ'} ${timeStr}]: `;
+                        setNotesText(prev => prev + signature);
+                      }}
+                      className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
+                    >
+                      <Plus size={14}/> הוסף חתימת זמן
+                    </button>
+                  </div>
                   <textarea 
                     value={notesText} 
                     onChange={e => setNotesText(e.target.value)}
-                    onBlur={() => updateLeadField(profileLead.id, 'agent_notes', notesText)}
-                    placeholder="הקלד/י כאן..."
-                    className="w-full flex-1 min-h-[300px] p-5 rounded-2xl bg-amber-50/50 border border-amber-100 text-slate-800 leading-relaxed outline-none focus:border-amber-300 focus:bg-amber-50 transition-colors resize-none"
+                    placeholder="הקלד/י כאן את ההערות שלך..."
+                    className="w-full flex-1 min-h-[300px] p-5 rounded-2xl bg-amber-50/50 border border-amber-100 text-slate-800 leading-relaxed outline-none focus:border-amber-300 focus:bg-amber-50 transition-colors resize-none font-sans shadow-inner"
                   />
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={() => {
+                        updateLeadField(profileLead.id, 'agent_notes', notesText);
+                        alert('הערה נשמרה בהצלחה!');
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-amber-200 transition-all active:scale-95"
+                    >
+                      שמור הערות
+                    </button>
+                  </div>
                 </div>
               )}
 
