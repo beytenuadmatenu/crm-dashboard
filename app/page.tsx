@@ -603,12 +603,12 @@ export default function Dashboard() {
                            </span>
                         </td>
                         <td className="px-6 py-5 border-b border-slate-200 text-right">
-                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[180px] line-clamp-2">
+                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[220px] line-clamp-4">
                             {lead.summary_sentence || '—'}
                           </div>
                         </td>
                         <td className="px-6 py-5 border-b border-slate-200">
-                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[250px] line-clamp-2">
+                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[400px] line-clamp-4 text-slate-500">
                             {lead.agent_notes || '—'}
                           </div>
                         </td>
@@ -1325,7 +1325,7 @@ export default function Dashboard() {
                       }}
                       className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
                     >
-                      <Plus size={14}/> הוסף חתימת זמן
+                      <Plus size={14}/> הוסף הערה
                     </button>
                   </div>
                   <textarea 
