@@ -124,60 +124,59 @@ export default function Dashboard() {
   const [loggedUser, setLoggedUser] = useState<{username: string, role: string, displayName: string} | null>(null);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
 
-  const USERS = [
-    { username: 'sapir', pass: 'S102030!', role: 'admin', displayName: 'ספיר' },
-    { username: 'uzi', pass: '123456', role: 'consultant', displayName: 'עוזי' },
-    { username: 'alex', pass: '123456', role: 'consultant', displayName: 'אלכס' },
-    { username: 'yosef', pass: '123456', role: 'consultant', displayName: 'יוסף' }
-  ];
-
   useEffect(() => {
-    const auth = sessionStorage.getItem('crm_auth');
-    if (auth) {
-      setIsAuthenticated(true);
-      let user = JSON.parse(auth);
-      // Re-hydrate name if missing from old session
-      if (user && user.username) {
-        if (!user.displayName) {
-          const found = USERS.find(u => u.username.toLowerCase() === user.username.toLowerCase());
-          if (found) {
-            user.displayName = found.displayName;
-            sessionStorage.setItem('crm_auth', JSON.stringify(user));
-          }
-        }
-        setLoggedUser(user);
-        if (user.role === 'consultant') setFilter('MY_LEADS');
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setupUser(session.user);
       } else {
-        // Invalid session, clear and logout
-        sessionStorage.removeItem('crm_auth');
         setIsAuthenticated(false);
       }
-    } else {
-      setIsAuthenticated(false);
-    }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setupUser(session.user);
+      } else {
+        setIsAuthenticated(false);
+        setLoggedUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  function handleLogin(e: React.FormEvent) {
+  function setupUser(user: any) {
+    setIsAuthenticated(true);
+    const email = user.email || '';
+    const username = email.split('@')[0];
+    const role = username.toLowerCase() === 'sapir' ? 'admin' : 'consultant';
+    
+    // Fallbacks for display names based on email prefixes
+    const displayNames: Record<string, string> = { 'sapir': 'ספיר', 'uzi': 'עוזי', 'alex': 'אלכס', 'yosef': 'יוסף' };
+    const displayName = user.user_metadata?.displayName || displayNames[username.toLowerCase()] || username;
+
+    setLoggedUser({ username, role, displayName });
+    if (role === 'consultant') setFilter('MY_LEADS');
+  }
+
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const user = USERS.find(u => u.username.toLowerCase() === loginForm.user.toLowerCase() && u.pass === loginForm.pass);
-    if (user) {
-      setIsAuthenticated(true);
-      const userData = { username: user.username, role: user.role, displayName: user.displayName };
-      setLoggedUser(userData);
-      sessionStorage.setItem('crm_auth', JSON.stringify(userData));
-      if (userData.role === 'consultant') setFilter('MY_LEADS');
-    } else {
-      alert('פרטי התחברות שגויים');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginForm.user,
+      password: loginForm.pass,
+    });
+    if (error) {
+      alert('פרטי התחברות שגויים: ' + error.message);
     }
   }
 
-  function handleLogout() {
-    setIsAuthenticated(false);
-    setLoggedUser(null);
-    sessionStorage.removeItem('crm_auth');
+  async function handleLogout() {
+    await supabase.auth.signOut();
   }
 
-  useEffect(() => { fetchLeads(); }, []);
+  useEffect(() => { 
+    if (isAuthenticated) fetchLeads(); 
+  }, [isAuthenticated]);
 
   async function fetchLeads() {
     try {
@@ -381,8 +380,9 @@ export default function Dashboard() {
           <p className="text-slate-400 text-sm mb-8">התחברות ללוח הבקרה המאובטח</p>
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             <input 
+              type="email"
               value={loginForm.user} onChange={e => setLoginForm({...loginForm, user: e.target.value})}
-              placeholder="שם משתמש" autoFocus
+              placeholder="כתובת אימייל" autoFocus
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-indigo-500 transition-colors"
             />
             <input 

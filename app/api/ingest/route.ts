@@ -5,8 +5,8 @@ import { NextResponse } from 'next/server'
 // or anon key if the table allows public inserts (safer to use service role if logic is server-side).
 // But for now we use the environment variables from the project.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
 export async function POST(request: Request) {
   try {
@@ -17,11 +17,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields: full_name, phone' }, { status: 400 })
     }
 
-    // Security check: simple API Key to prevent spam
+    // Security check: robust API Key from environment
     const authHeader = request.headers.get('x-api-key')
-    const secretKey = process.env.API_INGEST_KEY || 'ADMATENU_CRM_2026'
+    const secretKey = process.env.API_INGEST_KEY
     
-    if (authHeader !== secretKey) {
+    if (!secretKey || authHeader !== secretKey) {
        return NextResponse.json({ error: 'Unauthorized: Invalid API Key' }, { status: 401 })
     }
 
@@ -39,8 +39,8 @@ export async function POST(request: Request) {
       .select()
 
     if (error) {
-      console.error('Supabase Ingest Error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Supabase Ingest Error:', error.message)
+      return NextResponse.json({ error: 'Failed to ingest lead due to server error' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, lead: data[0] }, { status: 201 })
