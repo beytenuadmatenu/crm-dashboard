@@ -6,7 +6,8 @@ import {
   Users, LayoutDashboard, KanbanSquare, LogOut, 
   Search, Plus, RefreshCw, Send, Calendar, Edit, FileText, 
   Trash2, Mail, MapPin, Phone, CheckCircle2, AlertCircle, X, 
-  ChevronRight, ChevronLeft, TrendingUp, Zap, History, Lightbulb, AlertTriangle
+  ChevronRight, ChevronLeft, TrendingUp, Zap, History, Lightbulb, AlertTriangle,
+  UserPlus, PenTool, Archive
 } from 'lucide-react';
 
 // Tooltip wrapper — pure CSS, no library needed
@@ -63,7 +64,7 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
 };
 
 // Kanban Pipeline Columns logic
-const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'MEETING_HELD', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CLIENT', 'LEAD_FOR_PRESERVATION'];
+const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CLIENT', 'APPRAISALS_AND_SIGNATURES', 'LEAD_FOR_PRESERVATION'];
 
 function parseHebrewDate(dateStr: string): Date | null {
   if (!dateStr || dateStr === '—' || dateStr === 'בוטל') return null;
@@ -411,7 +412,7 @@ export default function Dashboard() {
         className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 lg:hidden transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsMenuOpen(false)}
       />
-      <aside className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 lg:static lg:w-64 lg:bg-white lg:shadow-none border-l border-slate-200 flex flex-col justify-between transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 lg:static lg:w-52 lg:bg-white lg:shadow-none border-l border-slate-200 flex flex-col justify-between transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <div>
           <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
             <div className="flex items-center gap-3">
@@ -432,13 +433,13 @@ export default function Dashboard() {
               <button 
                 key={item.id}
                 onClick={() => { setViewMode(item.id as any); setFilter('ALL'); setSearch(''); setIsMenuOpen(false); }} 
-                className={`flex items-center gap-3 w-full p-4 lg:p-3 rounded-xl font-bold transition-all ${viewMode === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                className={`flex items-center gap-2.5 w-full p-3 rounded-xl font-bold transition-all ${viewMode === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
               >
-                <item.icon size={22} className={item.color} /> <span>{item.label}</span>
+                <item.icon size={18} className={item.color} /> <span className="text-sm">{item.label}</span>
               </button>
             ))}
-            <button onClick={() => { setManualModal(true); setIsMenuOpen(false); }} className="flex items-center gap-3 w-full p-4 lg:p-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all">
-              <Plus size={22} /> <span>ליד חדש (ידני)</span>
+            <button onClick={() => { setManualModal(true); setIsMenuOpen(false); }} className="flex items-center gap-2.5 w-full p-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all">
+              <Plus size={18} /> <span className="text-sm">ליד חדש (ידני)</span>
             </button>
           </nav>
         </div>
@@ -516,7 +517,7 @@ export default function Dashboard() {
         )}
 
         {/* Scrollable Workspace */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6 lg:p-8">
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-2 lg:p-3">
           
           {/* KPI Stats Grid - Only on insights view */}
           {viewMode === 'insights' && (
@@ -544,7 +545,7 @@ export default function Dashboard() {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto">
-                {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'LEAD_FOR_PRESERVATION', 'CANCELLED'].map(st => (
+                {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'CALL_BACK_LATER', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CLIENT', 'APPRAISALS_AND_SIGNATURES', 'LEAD_FOR_PRESERVATION', 'CANCELLED'].map(st => (
                   <button 
                     key={st} 
                     onClick={() => setFilter(st)}
@@ -556,20 +557,20 @@ export default function Dashboard() {
               </div>
 
               {/* Standard Table View (Desktop Only) */}
-              <div className="hidden lg:block overflow-auto h-[calc(100vh-210px)] border border-slate-100 rounded-xl shadow-sm bg-white scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="hidden lg:block overflow-auto h-[calc(100vh-170px)] border border-slate-100 rounded-xl shadow-sm bg-white scrollbar-thin scrollbar-thumb-slate-200">
                 <table className="w-full text-right border-collapse">
                   <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10 transition-all">
                     <tr>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">שם הלקוח</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">סטטוס</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">מועד פגישה</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">עיר</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">יועץ</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">סיכום ראשוני</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">הערות סוכן</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">נוצר ב-</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">מקור</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">פעולות</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">שם הלקוח</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">סטטוס</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">מועד פגישה</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">עיר</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">יועץ</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">סיכום ראשוני</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">הערות סוכן</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">נוצר ב-</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">מקור</th>
+                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">פעולות</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
@@ -579,7 +580,7 @@ export default function Dashboard() {
                         onClick={() => { setProfileLead(lead); fetchDocs(lead.id); }}
                         className="hover:bg-indigo-50/50 cursor-pointer transition-all group border-r-4 border-transparent hover:border-indigo-500"
                       >
-                        <td className="px-6 py-5 whitespace-normal border-b border-slate-200">
+                        <td className="px-4 py-3 whitespace-normal border-b border-slate-200">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0 ring-2 ring-white shadow-sm group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-all">
                               {lead.full_name?.charAt(0) || 'L'}
@@ -590,42 +591,42 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-center text-xs border-b border-slate-200">
+                        <td className="px-3 py-2 whitespace-nowrap text-center text-xs border-b border-slate-200">
                           <span className={`px-2.5 py-1 rounded-full font-medium ring-1 ring-inset ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border} shadow-sm inline-flex items-center gap-1.5`}>
                             <span className={`w-1 h-1 rounded-full ${STATUS_CONFIG[lead.status]?.dot}`}></span>
                             {STATUS_CONFIG[lead.status]?.label}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-sm text-slate-600 font-normal border-b border-slate-200">
+                        <td className="px-4 py-3 text-sm text-slate-600 font-normal border-b border-slate-200">
                            <div className="whitespace-normal leading-relaxed max-w-[140px]">
                              {lead.meeting_time || <span className="text-slate-300 italic">טרם נקבע</span>}
                            </div>
                         </td>
-                        <td className="px-6 py-5 whitespace-normal text-sm text-slate-600 font-normal text-right border-b border-slate-200">{lead.city || '—'}</td>
-                        <td className="px-6 py-5 border-b border-slate-200">
+                        <td className="px-4 py-3 whitespace-normal text-sm text-slate-600 font-normal text-right border-b border-slate-200">{lead.city || '—'}</td>
+                        <td className="px-4 py-3 border-b border-slate-200 text-center">
                            <span className={`px-2 py-1 rounded-lg text-xs font-bold border whitespace-nowrap inline-block ${lead.consultant ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-slate-50 text-slate-300 border-dashed border-slate-200'}`}>
                              {lead.consultant || 'טרם שויך'}
                            </span>
                         </td>
-                        <td className="px-6 py-5 border-b border-slate-200 text-right">
+                        <td className="px-4 py-3 border-b border-slate-200 text-right">
                           <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[220px] line-clamp-4">
                             {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || (lead.summary_sentence ? '' : '—')}
                           </div>
                         </td>
-                        <td className="px-6 py-5 border-b border-slate-200">
+                        <td className="px-4 py-3 border-b border-slate-200">
                           <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[400px] line-clamp-4 text-slate-500">
                             {lead.agent_notes || '—'}
                           </div>
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-400 font-normal font-sans border-b border-slate-200">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-400 font-normal font-sans border-b border-slate-200">
                           {new Date(lead.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', year: '2-digit'})}
                         </td>
-                        <td className="px-6 py-5 border-b border-slate-200 text-center">
+                        <td className="px-4 py-3 border-b border-slate-200 text-center">
                            <span className={`px-2 py-1 rounded-lg text-[10px] font-bold border whitespace-nowrap inline-block ${lead.summary_sentence?.includes('[פייסבוק]') ? 'bg-blue-50 text-blue-700 border-blue-200' : lead.summary_sentence?.includes('[ידני]') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                              {lead.summary_sentence?.includes('[פייסבוק]') ? 'פייסבוק' : lead.summary_sentence?.includes('[ידני]') ? 'ידני' : 'בוט'}
                            </span>
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap text-center border-b border-slate-200">
+                        <td className="px-4 py-3 whitespace-nowrap text-center border-b border-slate-200">
                           <div className="flex items-center justify-center gap-1.5">
                              <Tip label="צפה בפרופיל">
                                <button 
@@ -1007,23 +1008,40 @@ export default function Dashboard() {
             })()
           ) : (
             // Kanban Pipeline View
-            <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-200px)] items-start">
+            <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-200px)] items-start pt-2 scrollbar-thin scrollbar-thumb-slate-200" dir="rtl">
               {KANBAN_STAGES.map(stage => {
                 const stageLeads = leads.filter(l => l.status === stage);
                 const stageObj = STATUS_CONFIG[stage];
+                
+                // Icon mapping for "surprising" the user
+                const StageIcon = stage === 'NEW_LEAD' ? UserPlus : 
+                                stage === 'MEETING_SCHEDULED' ? Calendar : 
+                                stage === 'DOC_COLLECTION' ? FileText : 
+                                stage === 'CLIENT' ? CheckCircle2 : 
+                                stage === 'APPRAISALS_AND_SIGNATURES' ? PenTool : 
+                                Archive;
+
                 return (
                   <div 
                     key={stage} 
-                    className="w-80 shrink-0 flex flex-col h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60"
+                    className="w-80 shrink-0 flex flex-col h-full bg-slate-50/50 rounded-3xl p-4 border border-slate-200/40 shadow-inner"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, stage)}
                   >
-                    <div className="flex items-center justify-between mb-4 px-2">
-                      <h3 className="font-bold text-slate-700">{stageObj.label}</h3>
-                      <span className="bg-white text-slate-500 text-xs font-bold px-2 py-1 rounded-full shadow-sm">{stageLeads.length}</span>
+                    <div className={`p-4 rounded-2xl border-x border-t mb-4 flex flex-col gap-2 ${stageObj.bg} ${stageObj.border} shadow-sm group/header`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded-lg bg-white shadow-sm transition-transform group-hover/header:rotate-12 ${stageObj.color}`}><StageIcon size={16}/></div>
+                            <h3 className={`font-bold text-sm ${stageObj.color}`}>{stageObj.label}</h3>
+                          </div>
+                          <span className="bg-white/60 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-slate-500 shadow-sm border border-white/40">{stageLeads.length}</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-white/40 overflow-hidden mt-1">
+                          <div className={`h-full rounded-full ${stageObj.dot} transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (stageLeads.length / (leads.length || 1)) * 100)}%` }}></div>
+                        </div>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-3">
+                    <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-3 px-1">
                       {stageLeads.map(lead => (
                         <div 
                           key={lead.id}
@@ -1034,7 +1052,6 @@ export default function Dashboard() {
                         >
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-bold text-slate-800 text-sm truncate pr-2">{lead.full_name || 'לקוח'}</h4>
-                            {lead.meeting_time && <span className="bg-indigo-50 text-indigo-600 text-[10px] px-2 py-0.5 rounded font-medium shrink-0">פגישה</span>}
                           </div>
                           <p className="text-xs text-slate-500 font-mono mb-3">{lead.phone}</p>
                           <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
