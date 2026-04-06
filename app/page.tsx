@@ -378,7 +378,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900" dir="rtl">
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-3xl w-full max-w-sm shadow-2xl text-center">
-          <img src="/LOGO.png" alt="לוגו" className="h-20 mx-auto mb-6 drop-shadow-xl" />
+          <img src="/LOGO.png" alt="" className="h-20 mx-auto mb-6 drop-shadow-xl" />
           <h1 className="text-white text-3xl font-bold mb-2">אדמתנו ביתנו</h1>
           <p className="text-slate-400 text-sm mb-8">התחברות ללוח הבקרה המאובטח</p>
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
@@ -414,7 +414,7 @@ export default function Dashboard() {
         <div>
           <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <img src="/LOGO.png" alt="לוגו" className="w-10 h-10 object-contain" />
+              <img src="/LOGO.png" alt="" className="w-10 h-10 object-contain" />
               <span className="font-bold text-lg text-slate-800">אדמתנו ביתנו</span>
             </div>
             <button onClick={() => setIsMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:bg-slate-50 rounded-lg">
