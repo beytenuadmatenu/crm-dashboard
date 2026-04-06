@@ -906,7 +906,7 @@ export default function Dashboard() {
                         <button onClick={() => setCalMonth(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
                       </div>
                       <div className="flex items-center gap-4 text-xs font-bold">
-                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> פגישה טלפונית</div>
+                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> פגישה טלפונית</div>
                         <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-600"></span> פגישה פיזית</div>
                       </div>
                     </div>
@@ -924,7 +924,7 @@ export default function Dashboard() {
                             <div className="flex flex-col gap-1.5">
                               {dayMeetings.slice(0, 3).map(l => (
                                 <button key={l.id} onClick={() => { setProfileLead(l); fetchDocs(l.id); setActiveTab('meetings'); }}
-                                  className={`text-right text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm truncate w-full transition-all ${l.meeting_time?.includes('טלפונית') ? 'bg-blue-50 border-blue-100 text-blue-700 hover:border-blue-300' : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-300'}`}>
+                                  className={`text-right text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm truncate w-full transition-all ${l.meeting_time?.includes('טלפונית') ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:border-emerald-200' : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-300'}`}>
                                   {l.meeting_time?.match(/(\d{2}):(\d{2})/)?.[0]} • {l.full_name}
                                 </button>
                               ))}
