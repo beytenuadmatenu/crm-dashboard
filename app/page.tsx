@@ -405,47 +405,69 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden" dir="rtl">
+    <div className="flex h-screen overflow-hidden" style={{background: 'var(--color-bg)'}} dir="rtl">
       
-      {/* Mobile Sidebar / Drawer (RTL) */}
+      {/* Mobile overlay */}
       <div 
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 lg:hidden transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-50 lg:hidden transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsMenuOpen(false)}
       />
-      <aside className={`fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 lg:static lg:w-52 lg:bg-white lg:shadow-none border-l border-slate-200 flex flex-col justify-between transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
-        <div>
-          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <img src="/LOGO.png" alt="" className="w-10 h-10 object-contain" />
-              <span className="font-bold text-lg text-slate-800">אדמתנו ביתנו</span>
-            </div>
-            <button onClick={() => setIsMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:bg-slate-50 rounded-lg">
-              <X size={20} />
-            </button>
-          </div>
-          <nav className="p-4 flex flex-col gap-2">
-            {[
-              { id: 'table', label: 'לוח בקרה', icon: LayoutDashboard, color: 'text-indigo-500' },
-              { id: 'kanban', label: 'ניהול תהליכים', icon: KanbanSquare },
-              { id: 'calendar', label: 'יומן פגישות', icon: Calendar },
-              { id: 'insights', label: 'דשבורד ניהולי', icon: TrendingUp, color: 'text-amber-500' }
-            ].map(item => (
-              <button 
-                key={item.id}
-                onClick={() => { setViewMode(item.id as any); setFilter('ALL'); setSearch(''); setIsMenuOpen(false); }} 
-                className={`flex items-center gap-2.5 w-full p-3 rounded-xl font-bold transition-all ${viewMode === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
-              >
-                <item.icon size={18} className={item.color} /> <span className="text-sm">{item.label}</span>
-              </button>
-            ))}
-            <button onClick={() => { setManualModal(true); setIsMenuOpen(false); }} className="flex items-center gap-2.5 w-full p-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-all">
-              <Plus size={18} /> <span className="text-sm">ליד חדש (ידני)</span>
-            </button>
-          </nav>
+
+      {/* ═══════════════════════════════════════════
+          SIDEBAR
+      ═══════════════════════════════════════════ */}
+      <aside className={`fixed top-0 right-0 h-full w-56 bg-white z-50 lg:static lg:w-48 flex flex-col border-l border-slate-200 transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+        
+        {/* Logo */}
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-100">
+          <img src="/LOGO.png" alt="" className="w-8 h-8 object-contain" />
+          <span className="text-sm font-bold text-slate-800 tracking-tight">אדמתנו ביתנו</span>
+          <button onClick={() => setIsMenuOpen(false)} className="lg:hidden mr-auto p-1.5 text-slate-400 rounded-lg hover:bg-slate-100">
+            <X size={18} />
+          </button>
         </div>
-        <div className="p-4 border-t border-slate-100">
-          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-4 lg:p-3 rounded-xl font-bold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all">
-            <LogOut size={22} /> <span>התנתק</span>
+
+        {/* Nav */}
+        <nav className="flex-1 p-3 flex flex-col gap-0.5">
+          {[
+            { id: 'table',    label: 'לוח בקרה',       icon: LayoutDashboard },
+            { id: 'kanban',   label: 'ניהול תהליכים',  icon: KanbanSquare },
+            { id: 'calendar', label: 'יומן פגישות',    icon: Calendar },
+            { id: 'insights', label: 'דשבורד ניהולי',  icon: TrendingUp },
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setViewMode(item.id as any); setFilter('ALL'); setSearch(''); setIsMenuOpen(false); }}
+              className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                viewMode === item.id
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <item.icon size={16} className={viewMode === item.id ? 'text-white' : 'text-slate-400'} />
+              {item.label}
+            </button>
+          ))}
+
+          <div className="my-2 h-px bg-slate-100" />
+
+          <button
+            onClick={() => { setManualModal(true); setIsMenuOpen(false); }}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all"
+          >
+            <Plus size={16} className="text-slate-400" />
+            ליד חדש (ידני)
+          </button>
+        </nav>
+
+        {/* Logout */}
+        <div className="p-3 border-t border-slate-100">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
+          >
+            <LogOut size={16} className="text-slate-400" />
+            התנתק
           </button>
         </div>
       </aside>
@@ -453,50 +475,55 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
-        {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-10 transition-all">
-          <div className="flex items-center gap-4 lg:gap-6 flex-1">
-            <button onClick={() => setIsMenuOpen(true)} className="lg:hidden p-2 text-slate-500 hover:bg-slate-50 rounded-lg">
-              <LayoutDashboard size={24} />
-            </button>
-            <h2 className="hidden lg:block text-slate-400 font-medium text-sm whitespace-nowrap">
-              מערכת CRM לניהול לידים ולקוחות
-            </h2>
-            <div className="lg:hidden font-bold text-slate-800">אדמתנו ביתנו</div>
-            
-            <div className="relative w-full max-w-md hidden md:block">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="חפש ליד, טלפון, עיר או הערה..." 
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pr-10 pl-4 text-sm outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
+        {/* ═══════════════════════════════════════════
+            HEADER
+        ═══════════════════════════════════════════ */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-5 lg:px-6 shrink-0 z-10">
+          {/* Mobile menu toggle */}
+          <button onClick={() => setIsMenuOpen(true)} className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
+            <LayoutDashboard size={20} />
+          </button>
+
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm hidden md:block">
+            <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="חיפוש לפי שם, טלפון, עיר..."
+              className="w-full bg-slate-100 border-0 rounded-xl py-2 pr-8 pl-4 text-sm text-slate-700 font-medium placeholder:text-slate-400 placeholder:font-normal outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-          <div className="flex items-center gap-3 lg:gap-4">
-            <div className="hidden lg:flex flex-col items-end justify-center px-4 border-l border-slate-200">
-               <span className="text-xs font-bold text-slate-800">{currentTime.toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
-               <span className="text-[10px] text-slate-400 font-medium">{currentTime.toLocaleDateString('he-IL')}</span>
-            </div>
-            {loggedUser && loggedUser.displayName && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 hidden sm:flex">
-                <span className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">
-                  {loggedUser.displayName.charAt(0)}
-                </span>
-                <span className="text-xs font-bold text-slate-600">{loggedUser.displayName}</span>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Clock */}
+          <div className="hidden lg:flex flex-col items-end">
+            <span className="text-sm font-semibold text-slate-700">{currentTime.toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
+            <span className="text-xs text-slate-400 font-medium">{currentTime.toLocaleDateString('he-IL')}</span>
+          </div>
+
+          {/* User pill */}
+          {loggedUser?.displayName && (
+            <div className="hidden sm:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
+              <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                {loggedUser.displayName.charAt(0)}
               </div>
-            )}
-            <div className="md:hidden relative">
-               <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-lg transition-all ${isSearchOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}>
-                 {isSearchOpen ? <X size={20}/> : <Search size={20}/>}
-               </button>
+              <span className="text-sm font-medium text-slate-700">{loggedUser.displayName}</span>
             </div>
-            <button onClick={fetchLeads} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="רענן נתונים">
-              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
+          )}
+
+          {/* Mobile search toggle */}
+          <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
+            {isSearchOpen ? <X size={18} /> : <Search size={18} />}
+          </button>
+
+          {/* Refresh */}
+          <button onClick={fetchLeads} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="רענן">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
         </header>
 
         {/* Mobile Search Overlay */}
@@ -516,117 +543,161 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Scrollable Workspace */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-2 lg:p-3">
+        {/* Workspace */}
+        <div className="flex-1 overflow-hidden flex flex-col bg-slate-100/60 p-2 lg:p-3 gap-3 min-h-0">
           
           {/* KPI Stats Grid - Only on insights view */}
           {viewMode === 'insights' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8 animate-in slide-in-from-top-4 duration-500">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">סה"כ לידים</p><h3 className="text-xl lg:text-2xl font-bold text-slate-900">{stats.total}</h3></div>
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform"><Users size={24} /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-6 animate-in slide-in-from-top-4 duration-700">
+              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-indigo-100">
+                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">סה"כ לידים</p><h3 className="text-2xl font-black text-slate-900 tracking-tight">{stats.total}</h3></div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm"><Users size={22} /></div>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">לידים חדשים</p><h3 className="text-xl lg:text-2xl font-bold text-blue-700">{stats.new}</h3></div>
-                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform"><AlertCircle size={24} /></div>
+              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-blue-100">
+                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">לידים חדשים</p><h3 className="text-2xl font-black text-blue-700 tracking-tight">{stats.new}</h3></div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm"><AlertCircle size={22} /></div>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">ממתינים לפגישה</p><h3 className="text-xl lg:text-2xl font-bold text-amber-700">{stats.meetings}</h3></div>
-                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><Calendar size={24} /></div>
+              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-amber-100">
+                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">ממתינים לפגישה</p><h3 className="text-2xl font-black text-amber-600 tracking-tight">{stats.meetings}</h3></div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500 shadow-sm"><Calendar size={22} /></div>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between transition-all cursor-default group">
-                <div><p className="text-xs lg:text-sm text-slate-500 font-medium mb-1">לקוחות מאושרים</p><h3 className="text-xl lg:text-2xl font-bold text-emerald-700">{stats.clients}</h3></div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform"><CheckCircle2 size={24} /></div>
+              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-emerald-100">
+                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">לקוחות מאושרים</p><h3 className="text-2xl font-black text-emerald-700 tracking-tight">{stats.clients}</h3></div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-sm"><CheckCircle2 size={22} /></div>
               </div>
             </div>
           )}
 
           {viewMode === 'table' ? (
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-              {/* Filter Tabs */}
-              <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto">
-                {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'CALL_BACK_LATER', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'CLIENT', 'APPRAISALS_AND_SIGNATURES', 'LEAD_FOR_PRESERVATION', 'CANCELLED'].map(st => (
-                  <button 
-                    key={st} 
-                    onClick={() => setFilter(st)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${filter === st ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
+            <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col" style={{boxShadow: 'var(--shadow-card)'}}>
+
+              {/* ── Filter Tabs ── */}
+              <div className="flex items-center gap-1.5 px-4 py-3 border-b border-slate-100 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'MY_LEADS',                label: 'הלידים שלי' },
+                  { id: 'ALL',                     label: 'הכל' },
+                  { id: 'HOT',                     label: '🔥 חמים' },
+                  { id: 'NEW_LEAD',                label: STATUS_CONFIG['NEW_LEAD']?.label },
+                  { id: 'CALL_BACK_LATER',         label: STATUS_CONFIG['CALL_BACK_LATER']?.label },
+                  { id: 'MEETING_SCHEDULED',       label: STATUS_CONFIG['MEETING_SCHEDULED']?.label },
+                  { id: 'DOC_COLLECTION',          label: STATUS_CONFIG['DOC_COLLECTION']?.label },
+                  { id: 'CLIENT',                  label: STATUS_CONFIG['CLIENT']?.label },
+                  { id: 'APPRAISALS_AND_SIGNATURES', label: STATUS_CONFIG['APPRAISALS_AND_SIGNATURES']?.label },
+                  { id: 'LEAD_FOR_PRESERVATION',   label: STATUS_CONFIG['LEAD_FOR_PRESERVATION']?.label },
+                  { id: 'CANCELLED',               label: STATUS_CONFIG['CANCELLED']?.label },
+                ].map(({ id, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => setFilter(id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                      filter === id
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                    }`}
                   >
-                    {st === 'ALL' ? 'כל הלידים' : st === 'HOT' ? 'לידים "חמים"' : st === 'MY_LEADS' ? 'הלידים שלי' : STATUS_CONFIG[st]?.label}
+                    {label}
                   </button>
                 ))}
               </div>
 
-              {/* Standard Table View (Desktop Only) */}
-              <div className="hidden lg:block overflow-auto h-[calc(100vh-170px)] border border-slate-100 rounded-xl shadow-sm bg-white scrollbar-thin scrollbar-thumb-slate-200">
+              {/* ── Desktop Table ── */}
+              <div className="hidden lg:block overflow-auto scrollbar-thin" style={{height: 'calc(100vh - 168px)'}}>
                 <table className="w-full text-right border-collapse">
-                  <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10 transition-all">
+                  <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">שם הלקוח</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">סטטוס</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">מועד פגישה</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">עיר</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">יועץ</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">סיכום ראשוני</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">הערות סוכן</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider">נוצר ב-</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">מקור</th>
-                      <th className="px-4 py-3 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">פעולות</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">שם הלקוח</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide text-center">סטטוס</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">מועד פגישה</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">עיר</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide text-center">יועץ</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">סיכום</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">הערות</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">נוצר</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide text-center">מקור</th>
+                      <th className="px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide text-center">פעולות</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white">
-                    {filtered.map(lead => (
-                      <tr 
-                        key={lead.id} 
+                  <tbody>
+                    {filtered.map((lead, idx) => (
+                      <tr
+                        key={lead.id}
                         onClick={() => { setProfileLead(lead); fetchDocs(lead.id); }}
-                        className="hover:bg-indigo-50/50 cursor-pointer transition-all group border-r-4 border-transparent hover:border-indigo-500"
+                        className="group cursor-pointer border-b border-slate-100 hover:bg-indigo-50/40 transition-colors"
+                        style={{animationDelay: `${idx * 20}ms`}}
                       >
-                        <td className="px-4 py-3 whitespace-normal border-b border-slate-200">
+                        {/* Name + Phone */}
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0 ring-2 ring-white shadow-sm group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-all">
-                              {lead.full_name?.charAt(0) || 'L'}
+                            <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-semibold text-xs flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              {lead.full_name?.charAt(0) || '?'}
                             </div>
                             <div>
-                               <div className="font-bold text-slate-900 text-sm leading-tight">{lead.full_name || 'לקוח'}</div>
-                               <div className="text-xs text-slate-400 font-mono tracking-tight leading-none mt-1">{lead.phone}</div>
+                              <div className="text-sm font-semibold text-slate-900 leading-tight group-hover:text-indigo-700 transition-colors">{lead.full_name || 'לקוח'}</div>
+                              <div className="text-xs text-slate-400 font-normal mt-0.5" dir="ltr">{lead.phone}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-center text-xs border-b border-slate-200">
-                          <span className={`px-2.5 py-1 rounded-full font-medium ring-1 ring-inset ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border} shadow-sm inline-flex items-center gap-1.5`}>
-                            <span className={`w-1 h-1 rounded-full ${STATUS_CONFIG[lead.status]?.dot}`}></span>
+
+                        {/* Status */}
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[lead.status]?.dot} dot-pulse`} />
                             {STATUS_CONFIG[lead.status]?.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 font-normal border-b border-slate-200">
-                           <div className="whitespace-normal leading-relaxed max-w-[140px]">
-                             {lead.meeting_time || <span className="text-slate-300 italic">טרם נקבע</span>}
-                           </div>
+
+                        {/* Meeting */}
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-medium text-slate-600">
+                            {lead.meeting_time || <span className="text-slate-300">—</span>}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 whitespace-normal text-sm text-slate-600 font-normal text-right border-b border-slate-200">{lead.city || '—'}</td>
-                        <td className="px-4 py-3 border-b border-slate-200 text-center">
-                           <span className={`px-2 py-1 rounded-lg text-xs font-bold border whitespace-nowrap inline-block ${lead.consultant ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-slate-50 text-slate-300 border-dashed border-slate-200'}`}>
-                             {lead.consultant || 'טרם שויך'}
-                           </span>
+
+                        {/* City */}
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-medium text-slate-600">{lead.city || '—'}</span>
                         </td>
-                        <td className="px-4 py-3 border-b border-slate-200 text-right">
-                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[220px] line-clamp-4">
-                            {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || (lead.summary_sentence ? '' : '—')}
-                          </div>
+
+                        {/* Consultant */}
+                        <td className="px-4 py-3 text-center">
+                          {lead.consultant
+                            ? <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">{lead.consultant}</span>
+                            : <span className="text-slate-300 text-xs">—</span>
+                          }
                         </td>
-                        <td className="px-4 py-3 border-b border-slate-200">
-                          <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[400px] line-clamp-4 text-slate-500">
-                            {lead.agent_notes || '—'}
-                          </div>
+
+                        {/* Summary */}
+                        <td className="px-4 py-3 max-w-[200px]">
+                          <p className="text-xs text-slate-500 font-normal leading-relaxed line-clamp-2">
+                            {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || '—'}
+                          </p>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-400 font-normal font-sans border-b border-slate-200">
-                          {new Date(lead.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', year: '2-digit'})}
+
+                        {/* Notes */}
+                        <td className="px-4 py-3 max-w-[200px]">
+                          <p className="text-xs text-slate-400 font-normal leading-relaxed line-clamp-2">{lead.agent_notes || '—'}</p>
                         </td>
-                        <td className="px-4 py-3 border-b border-slate-200 text-center">
-                           <span className={`px-2 py-1 rounded-lg text-[10px] font-bold border whitespace-nowrap inline-block ${lead.summary_sentence?.includes('[פייסבוק]') ? 'bg-blue-50 text-blue-700 border-blue-200' : lead.summary_sentence?.includes('[ידני]') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                             {lead.summary_sentence?.includes('[פייסבוק]') ? 'פייסבוק' : lead.summary_sentence?.includes('[ידני]') ? 'ידני' : 'בוט'}
-                           </span>
+
+                        {/* Created */}
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-medium text-slate-400">
+                            {new Date(lead.created_at).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-center border-b border-slate-200">
+
+                        {/* Source */}
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-medium border ${
+                            lead.summary_sentence?.includes('[פייסבוק]') ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                            lead.summary_sentence?.includes('[ידני]')    ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                            'bg-emerald-50 text-emerald-600 border-emerald-100'
+                          }`}>
+                            {lead.summary_sentence?.includes('[פייסבוק]') ? 'פייסבוק' : lead.summary_sentence?.includes('[ידני]') ? 'ידני' : 'בוט'}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                              <Tip label="צפה בפרופיל">
                                <button 
@@ -1008,7 +1079,7 @@ export default function Dashboard() {
             })()
           ) : (
             // Kanban Pipeline View
-            <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-200px)] items-start pt-2 scrollbar-thin scrollbar-thumb-slate-200" dir="rtl">
+            <div className="flex gap-4 overflow-x-auto flex-1 min-h-0 pt-2 pb-4 scrollbar-thin" dir="rtl">
               {KANBAN_STAGES.map(stage => {
                 const stageLeads = leads.filter(l => l.status === stage);
                 const stageObj = STATUS_CONFIG[stage];
@@ -1024,42 +1095,47 @@ export default function Dashboard() {
                 return (
                   <div 
                     key={stage} 
-                    className="w-80 shrink-0 flex flex-col h-full bg-slate-50/50 rounded-3xl p-4 border border-slate-200/40 shadow-inner"
+                    className="w-72 shrink-0 flex flex-col min-h-0 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, stage)}
                   >
-                    <div className={`p-4 rounded-2xl border-x border-t mb-4 flex flex-col gap-2 ${stageObj.bg} ${stageObj.border} shadow-sm group/header`}>
+                    <div className={`px-4 py-3 border-b flex flex-col gap-2 ${stageObj.bg} ${stageObj.border}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg bg-white shadow-sm transition-transform group-hover/header:rotate-12 ${stageObj.color}`}><StageIcon size={16}/></div>
-                            <h3 className={`font-bold text-sm ${stageObj.color}`}>{stageObj.label}</h3>
+                            <div className={`p-1.5 rounded-lg bg-white/80 shadow-sm ${stageObj.color}`}><StageIcon size={15}/></div>
+                            <h3 className={`font-semibold text-sm ${stageObj.color}`}>{stageObj.label}</h3>
                           </div>
-                          <span className="bg-white/60 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-slate-500 shadow-sm border border-white/40">{stageLeads.length}</span>
+                          <span className="bg-white/70 px-2 py-0.5 rounded-full text-xs font-bold text-slate-500 border border-white/50">{stageLeads.length}</span>
                         </div>
-                        <div className="h-1.5 w-full rounded-full bg-white/40 overflow-hidden mt-1">
-                          <div className={`h-full rounded-full ${stageObj.dot} transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, (stageLeads.length / (leads.length || 1)) * 100)}%` }}></div>
+                        <div className="h-1 w-full rounded-full bg-white/50 overflow-hidden">
+                          <div className={`h-full rounded-full ${stageObj.dot} transition-all duration-700`} style={{ width: `${Math.min(100, (stageLeads.length / (leads.length || 1)) * 100)}%` }}></div>
                         </div>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-3 px-1">
+                    <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 p-3">
                       {stageLeads.map(lead => (
                         <div 
                           key={lead.id}
                           draggable
                           onDragStart={(e) => handleDragStart(e, lead.id)}
                           onClick={() => { setProfileLead(lead); fetchDocs(lead.id); }}
-                          className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-md transition-all group"
+                          className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-md transition-all group"
                         >
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-bold text-slate-800 text-sm truncate pr-2">{lead.full_name || 'לקוח'}</h4>
+                          <div className="flex justify-between items-start mb-1.5">
+                            <h4 className="font-semibold text-slate-800 text-sm truncate pr-2">{lead.full_name || 'לקוח'}</h4>
                           </div>
-                          <p className="text-xs text-slate-500 font-mono mb-3">{lead.phone}</p>
-                          <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
-                             <div className="text-[10px] text-slate-400">{new Date(lead.created_at).toLocaleDateString('he-IL')}</div>
-                             <div className="opacity-0 group-hover:opacity-100 transition-opacity"><Edit size={14} className="text-slate-400"/></div>
+                          <p className="text-xs text-slate-400 mb-2" dir="ltr">{lead.phone}</p>
+                          <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                             <div className="text-xs text-slate-400">{new Date(lead.created_at).toLocaleDateString('he-IL')}</div>
+                             <div className="opacity-0 group-hover:opacity-100 transition-opacity"><Edit size={13} className="text-slate-400"/></div>
                           </div>
                         </div>
                       ))}
+                      {stageLeads.length === 0 && (
+                        <div className="flex-1 flex items-center justify-center py-8 text-slate-300 text-xs font-medium border-2 border-dashed border-slate-200 rounded-xl m-1">
+                          אין לידים בשלב זה
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
