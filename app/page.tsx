@@ -58,11 +58,12 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
   APPRAISALS_AND_SIGNATURES: { label: 'שמאות וחתימות', color: 'text-pink-700', bg: 'bg-pink-50', dot: 'bg-pink-500', border: 'border-pink-200' },
   MEETING_HELD: { label: 'התקיימה פגישה', color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500', border: 'border-emerald-200' },
   CLIENT: { label: 'אושר', color: 'text-green-800', bg: 'bg-green-100', dot: 'bg-green-600', border: 'border-green-300' },
+  LEAD_FOR_PRESERVATION: { label: 'ליד לשימור', color: 'text-rose-700', bg: 'bg-rose-50', dot: 'bg-rose-500', border: 'border-rose-200' },
   CANCELLED: { label: 'לא רלוונטי', color: 'text-slate-600', bg: 'bg-slate-100', dot: 'bg-slate-400', border: 'border-slate-200' },
 };
 
 // Kanban Pipeline Columns logic
-const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'MEETING_HELD', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CLIENT'];
+const KANBAN_STAGES = ['NEW_LEAD', 'MEETING_SCHEDULED', 'MEETING_HELD', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CLIENT', 'LEAD_FOR_PRESERVATION'];
 
 function parseHebrewDate(dateStr: string): Date | null {
   if (!dateStr || dateStr === '—' || dateStr === 'בוטל') return null;
@@ -100,6 +101,7 @@ export default function Dashboard() {
   // Manual Meeting State
   const [manualDate, setManualDate] = useState("");
   const [manualTime, setManualTime] = useState("10:00");
+  const [manualMeetingType, setManualMeetingType] = useState<"phone" | "physical">("phone");
   
   // Kanban Drag & Drop
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export default function Dashboard() {
     const displayName = user.user_metadata?.displayName || displayNames[username.toLowerCase()] || username;
 
     setLoggedUser({ username, role, displayName });
-    if (role === 'consultant') setFilter('MY_LEADS');
+    setFilter('ALL');
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -225,7 +227,7 @@ export default function Dashboard() {
       const dateObj = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
       const daysHe = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
       const dayName = daysHe[dateObj.getDay()];
-      const formattedTime = `יום ${dayName} ${d}.${m}.${y} בשעה ${manualTime}`;
+      const formattedTime = `(${manualMeetingType === 'phone' ? 'פגישה טלפונית' : 'פגישה פיזית'}) יום ${dayName} ${d}.${m}.${y} בשעה ${manualTime}`;
       
       await updateLeadField(profileLead.id, 'meeting_time', formattedTime);
       await updateLeadField(profileLead.id, 'status', 'MEETING_SCHEDULED');
@@ -376,6 +378,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900" dir="rtl">
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-3xl w-full max-w-sm shadow-2xl text-center">
+          <img src="/LOGO.png" alt="לוגו" className="h-20 mx-auto mb-6 drop-shadow-xl" />
           <h1 className="text-white text-3xl font-bold mb-2">אדמתנו ביתנו</h1>
           <p className="text-slate-400 text-sm mb-8">התחברות ללוח הבקרה המאובטח</p>
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
@@ -411,7 +414,7 @@ export default function Dashboard() {
         <div>
           <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-xl shadow-md">א</div>
+              <img src="/LOGO.png" alt="לוגו" className="w-10 h-10 object-contain" />
               <span className="font-bold text-lg text-slate-800">אדמתנו ביתנו</span>
             </div>
             <button onClick={() => setIsMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:bg-slate-50 rounded-lg">
@@ -540,7 +543,7 @@ export default function Dashboard() {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
-                {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'CANCELLED'].map(st => (
+                {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'LEAD_FOR_PRESERVATION', 'CANCELLED'].map(st => (
                   <button 
                     key={st} 
                     onClick={() => setFilter(st)}
@@ -897,9 +900,15 @@ export default function Dashboard() {
                   {/* Desktop Grid View */}
                   <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                      <button onClick={() => setCalMonth(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronRight size={20}/></button>
-                      <h2 className="text-lg font-bold text-slate-800">{calMonth.toLocaleString('he-IL', {month: 'long', year: 'numeric'})}</h2>
-                      <button onClick={() => setCalMonth(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
+                      <div className="flex items-center gap-4">
+                        <button onClick={() => setCalMonth(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronRight size={20}/></button>
+                        <h2 className="text-lg font-bold text-slate-800">{calMonth.toLocaleString('he-IL', {month: 'long', year: 'numeric'})}</h2>
+                        <button onClick={() => setCalMonth(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs font-bold">
+                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> פגישה טלפונית</div>
+                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-600"></span> פגישה פיזית</div>
+                      </div>
                     </div>
                     <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50">
                       {dayLabels.map(d => <div key={d} className="py-2 text-center text-xs font-bold text-slate-400">{d}</div>)}
@@ -915,7 +924,7 @@ export default function Dashboard() {
                             <div className="flex flex-col gap-1.5">
                               {dayMeetings.slice(0, 3).map(l => (
                                 <button key={l.id} onClick={() => { setProfileLead(l); fetchDocs(l.id); setActiveTab('meetings'); }}
-                                  className="text-right text-[10px] font-bold px-2 py-1 rounded-md bg-white border border-indigo-100 text-indigo-700 hover:border-indigo-300 shadow-sm truncate w-full transition-all">
+                                  className={`text-right text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm truncate w-full transition-all ${l.meeting_time?.includes('טלפונית') ? 'bg-blue-50 border-blue-100 text-blue-700 hover:border-blue-300' : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-300'}`}>
                                   {l.meeting_time?.match(/(\d{2}):(\d{2})/)?.[0]} • {l.full_name}
                                 </button>
                               ))}
@@ -1257,6 +1266,15 @@ export default function Dashboard() {
                           <input type="time" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500" value={manualTime} onChange={e => setManualTime(e.target.value)} />
                         </div>
                       </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="text-xs font-semibold text-slate-500 block mb-1">סוג פגישה</label>
+                          <div className="grid grid-cols-2 gap-2">
+                             <button type="button" onClick={() => setManualMeetingType('phone')} className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${manualMeetingType === 'phone' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}>טלפונית</button>
+                             <button type="button" onClick={() => setManualMeetingType('physical')} className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${manualMeetingType === 'physical' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}>פיזית</button>
+                          </div>
+                        </div>
+                      </div>
                       <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-lg font-semibold mt-2 transition-colors">שמור פגישה ב-CRM</button>
                     </form>
                   </div>
@@ -1316,17 +1334,6 @@ export default function Dashboard() {
                 <div className="flex flex-col h-full gap-4">
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-slate-500">פירוט שיחות, הערות פנימיות ותיעוד התקדמות.</p>
-                    <button 
-                      onClick={() => {
-                        const now = new Date();
-                        const timeStr = `${now.getDate()}/${now.getMonth()+1} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                        const signature = `\n[${loggedUser?.displayName || 'יועץ'} ${timeStr}]: `;
-                        setNotesText(prev => prev + signature);
-                      }}
-                      className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
-                    >
-                      <Plus size={14}/> הוסף הערה
-                    </button>
                   </div>
                   <textarea 
                     value={notesText} 
@@ -1337,7 +1344,17 @@ export default function Dashboard() {
                   <div className="flex justify-end">
                     <button 
                       onClick={() => {
-                        updateLeadField(profileLead.id, 'agent_notes', notesText);
+                        const now = new Date();
+                        const timeStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                        const prefix = `[${loggedUser?.displayName || 'יועץ'} - ${timeStr}]: `;
+                        
+                        // Check if the timestamp is already added to prevent duplicate on multiple clicks
+                        const finalNotes = notesText.startsWith(`[${loggedUser?.displayName || 'יועץ'}`) 
+                          ? notesText 
+                          : prefix + notesText;
+
+                        updateLeadField(profileLead.id, 'agent_notes', finalNotes);
+                        setNotesText(finalNotes); // Sync local state
                         alert('הערה נשמרה בהצלחה!');
                       }}
                       className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-amber-200 transition-all active:scale-95"

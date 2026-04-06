@@ -33,7 +33,8 @@ export async function POST(request: Request) {
           phone, 
           city: city || '', 
           status: 'NEW_LEAD',
-          agent_notes: notes ? `[המערכת]: ${notes}\nליד חדש הגיע מהפייסבוק` : 'ליד חדש הגיע מהפייסבוק'
+          summary_sentence: notes || 'ליד חדש הגיע מהפייסבוק',
+          agent_notes: ''
         }
       ])
       .select()
