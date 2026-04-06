@@ -542,12 +542,12 @@ export default function Dashboard() {
           {viewMode === 'table' ? (
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Filter Tabs */}
-              <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 p-4 border-b border-slate-100 overflow-x-auto">
                 {['MY_LEADS', 'ALL', 'HOT', 'NEW_LEAD', 'MEETING_SCHEDULED', 'DOC_COLLECTION', 'APPRAISALS_AND_SIGNATURES', 'CALL_BACK_LATER', 'MEETING_HELD', 'CLIENT', 'LEAD_FOR_PRESERVATION', 'CANCELLED'].map(st => (
                   <button 
                     key={st} 
                     onClick={() => setFilter(st)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${filter === st ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${filter === st ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
                   >
                     {st === 'ALL' ? 'כל הלידים' : st === 'HOT' ? 'לידים "חמים"' : st === 'MY_LEADS' ? 'הלידים שלי' : STATUS_CONFIG[st]?.label}
                   </button>
