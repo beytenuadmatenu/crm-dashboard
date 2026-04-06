@@ -33,7 +33,7 @@ export async function POST(request: Request) {
           phone, 
           city: city || '', 
           status: 'NEW_LEAD',
-          summary_sentence: notes || 'ליד חדש הגיע מהפייסבוק',
+          summary_sentence: notes ? `[פייסבוק]: ${notes}` : '[פייסבוק]: ליד חדש הגיע מהפייסבוק',
           agent_notes: ''
         }
       ])

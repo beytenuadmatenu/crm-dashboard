@@ -57,7 +57,7 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, bg: string, 
   DOC_COLLECTION: { label: 'איסוף מסמכים', color: 'text-sky-700', bg: 'bg-sky-50', dot: 'bg-sky-500', border: 'border-sky-200' },
   APPRAISALS_AND_SIGNATURES: { label: 'שמאות וחתימות', color: 'text-pink-700', bg: 'bg-pink-50', dot: 'bg-pink-500', border: 'border-pink-200' },
   MEETING_HELD: { label: 'התקיימה פגישה', color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500', border: 'border-emerald-200' },
-  CLIENT: { label: 'אושר', color: 'text-green-800', bg: 'bg-green-100', dot: 'bg-green-600', border: 'border-green-300' },
+  CLIENT: { label: 'אישור עקרוני', color: 'text-green-800', bg: 'bg-green-100', dot: 'bg-green-600', border: 'border-green-300' },
   LEAD_FOR_PRESERVATION: { label: 'ליד לשימור', color: 'text-rose-700', bg: 'bg-rose-50', dot: 'bg-rose-500', border: 'border-rose-200' },
   CANCELLED: { label: 'לא רלוונטי', color: 'text-slate-600', bg: 'bg-slate-100', dot: 'bg-slate-400', border: 'border-slate-200' },
 };
@@ -264,6 +264,7 @@ export default function Dashboard() {
 
     const { error } = await supabase.from('leads').insert([{ 
       ...newLead, 
+      summary_sentence: newLead.summary_sentence ? `[ידני]: ${newLead.summary_sentence}` : '[ידני]',
       phone: formattedPhone,
       status: 'NEW_LEAD' 
     }]);
@@ -567,6 +568,7 @@ export default function Dashboard() {
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">סיכום ראשוני</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">הערות סוכן</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">נוצר ב-</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">מקור</th>
                       <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">פעולות</th>
                     </tr>
                   </thead>
@@ -607,7 +609,7 @@ export default function Dashboard() {
                         </td>
                         <td className="px-6 py-5 border-b border-slate-200 text-right">
                           <div className="text-sm text-slate-600 leading-relaxed font-normal group-hover:text-slate-900 transition-colors whitespace-normal max-w-[220px] line-clamp-4">
-                            {lead.summary_sentence || '—'}
+                            {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || (lead.summary_sentence ? '' : '—')}
                           </div>
                         </td>
                         <td className="px-6 py-5 border-b border-slate-200">
@@ -617,6 +619,11 @@ export default function Dashboard() {
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-400 font-normal font-sans border-b border-slate-200">
                           {new Date(lead.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', year: '2-digit'})}
+                        </td>
+                        <td className="px-6 py-5 border-b border-slate-200 text-center">
+                           <span className={`px-2 py-1 rounded-lg text-[10px] font-bold border whitespace-nowrap inline-block ${lead.summary_sentence?.includes('[פייסבוק]') ? 'bg-blue-50 text-blue-700 border-blue-200' : lead.summary_sentence?.includes('[ידני]') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                             {lead.summary_sentence?.includes('[פייסבוק]') ? 'פייסבוק' : lead.summary_sentence?.includes('[ידני]') ? 'ידני' : 'בוט'}
+                           </span>
                         </td>
                         <td className="px-6 py-5 whitespace-nowrap text-center border-b border-slate-200">
                           <div className="flex items-center justify-center gap-1.5">
@@ -924,7 +931,12 @@ export default function Dashboard() {
                             <div className="flex flex-col gap-1.5">
                               {dayMeetings.slice(0, 3).map(l => (
                                 <button key={l.id} onClick={() => { setProfileLead(l); fetchDocs(l.id); setActiveTab('meetings'); }}
-                                  className={`text-right text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm truncate w-full transition-all ${l.meeting_time?.includes('טלפונית') ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:border-emerald-200' : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-300'}`}>
+                                  className={`text-right text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm truncate w-full transition-all ${
+                                    l.meeting_time?.includes('פגישה פיזית') ? 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-300' :
+                                    (l.meeting_time?.includes('פגישה טלפונית') || (!l.summary_sentence?.includes('[פייסבוק]') && !l.summary_sentence?.includes('[ידני]')))
+                                    ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:border-emerald-200' 
+                                    : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-300'
+                                  }`}>
                                   {l.meeting_time?.match(/(\d{2}):(\d{2})/)?.[0]} • {l.full_name}
                                 </button>
                               ))}
@@ -1166,7 +1178,7 @@ export default function Dashboard() {
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">סיכום המערכת (AI)</label>
                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-slate-700 leading-relaxed whitespace-pre-wrap">
-                      {profileLead.summary_sentence || 'עדיין אין סיכום מהבוט.'}
+                      {profileLead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || 'עדיין אין סיכום מהבוט.'}
                     </div>
                   </div>
 
@@ -1183,6 +1195,28 @@ export default function Dashboard() {
                         <option value="uzi">עוזי</option>
                         <option value="alex">אלכס</option>
                         <option value="yosef">יוסף</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">מקור הליד</label>
+                      <select
+                        value={profileLead.summary_sentence?.includes('[פייסבוק]') ? 'facebook' : profileLead.summary_sentence?.includes('[ידני]') ? 'manual' : 'bot'}
+                        onChange={async (e) => {
+                          const newSrc = e.target.value;
+                          let baseText = (profileLead.summary_sentence || '').replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '');
+                          
+                          let newSummary = baseText;
+                          if (newSrc === 'facebook') newSummary = `[פייסבוק]: ${baseText || 'ליד חדש הגיע מהפייסבוק'}`;
+                          else if (newSrc === 'manual') newSummary = `[ידני]: ${baseText}`;
+                          
+                          await updateLeadField(profileLead.id, 'summary_sentence', newSummary);
+                          setProfileLead(prev => prev ? {...prev, summary_sentence: newSummary} : null);
+                        }}
+                        className={`w-full px-4 py-3 rounded-xl border font-bold text-sm outline-none transition-all ${profileLead.summary_sentence?.includes('[פייסבוק]') ? 'bg-blue-50 text-blue-700 border-blue-200' : profileLead.summary_sentence?.includes('[ידני]') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
+                      >
+                         <option value="bot">הגיע מהבוט (וואטסאפ)</option>
+                         <option value="facebook">הגיע מהפייסבוק (API)</option>
+                         <option value="manual">נוצר ידנית במערכת</option>
                       </select>
                     </div>
                   </div>
@@ -1213,7 +1247,7 @@ export default function Dashboard() {
                          }}
                          className="flex items-center gap-2 text-red-500 hover:text-red-700 font-bold text-sm p-3 hover:bg-red-50 rounded-xl transition-all"
                        >
-                         <Trash2 size={18}/> מחק ליד לצמיתות
+                         <Trash2 size={18}/> מחק ליד
                        </button>
                     </div>
                   )}
@@ -1291,7 +1325,11 @@ export default function Dashboard() {
                             <div className="w-8 h-8 rounded-full bg-indigo-600 border-4 border-white shadow-sm z-10 shrink-0"></div>
                             <div className="bg-slate-50 p-4 rounded-2xl flex-1 border border-slate-100">
                                <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest leading-none">נוצר במערכת</p>
-                               <p className="text-sm font-bold text-slate-800 leading-tight">ליד חדש התקבל מהבוט</p>
+                               <p className="text-sm font-bold text-slate-800 leading-tight">
+                                  {profileLead.summary_sentence?.includes('[פייסבוק]') ? 'ליד חדש הגיע מהפייסבוק' : 
+                                   profileLead.summary_sentence?.includes('[ידני]') ? 'ליד חדש הוקם ידנית' : 
+                                   'ליד חדש הגיע מוואטסאפ (בוט)'}
+                                </p>
                                <p className="text-[11px] text-slate-500 mt-1">{new Date(profileLead.created_at).toLocaleString('he-IL')}</p>
                             </div>
                          </div>
