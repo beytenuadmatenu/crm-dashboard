@@ -979,10 +979,10 @@ export default function Dashboard() {
               }
 
               return (
-                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 scrollbar-thin pb-12">
+                <div className="flex-1 min-h-0 flex flex-col pr-1 pb-1 lg:pb-0 relative">
                   {/* Desktop Grid View */}
-                  <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500 shrink-0">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                  <div className="hidden lg:flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 bg-white">
                       <div className="flex items-center gap-4">
                         <button onClick={() => setCalMonth(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronRight size={20}/></button>
                         <h2 className="text-lg font-bold text-slate-800">{calMonth.toLocaleString('he-IL', {month: 'long', year: 'numeric'})}</h2>
@@ -993,11 +993,12 @@ export default function Dashboard() {
                         <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-600"></span> פגישה פיזית</div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50">
+                    <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50 shrink-0">
                       {dayLabels.map(d => <div key={d} className="py-2 text-center text-xs font-bold text-slate-400">{d}</div>)}
                     </div>
-                    <div className="grid grid-cols-7">
-                      {cells.map((day, idx) => {
+                    <div className="flex-1 overflow-y-auto scrollbar-thin">
+                      <div className="grid grid-cols-7">
+                        {cells.map((day, idx) => {
                         if (!day) return <div key={idx} className="min-h-[120px] border-b border-l border-slate-100 bg-slate-50/20" />;
                         const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
                         const dayMeetings = getMeetingsForDay(day);
@@ -1021,11 +1022,12 @@ export default function Dashboard() {
                           </div>
                         );
                       })}
+                      </div>
                     </div>
                   </div>
 
                   {/* Mobile Agenda View */}
-                  <div className="lg:hidden flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                  <div className="lg:hidden flex-1 min-h-0 overflow-y-auto scrollbar-thin flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 mt-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm sticky top-0 z-10">
                        <button onClick={() => setCalMonth(new Date(year, month - 1))} className="p-2 active:bg-slate-100 rounded-lg"><ChevronRight size={20}/></button>
                        <h2 className="text-base font-bold text-slate-800">{calMonth.toLocaleString('he-IL', {month: 'long', year: 'numeric'})}</h2>
