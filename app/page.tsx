@@ -652,19 +652,19 @@ export default function Dashboard() {
 
                         {/* Summary */}
                         <td className="px-4 py-3 max-w-[200px]">
-                          <p className="text-xs text-slate-500 font-normal leading-relaxed line-clamp-2">
+                          <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-2">
                             {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || '—'}
                           </p>
                         </td>
 
                         {/* Notes */}
                         <td className="px-4 py-3 max-w-[200px]">
-                          <p className="text-xs text-slate-400 font-normal leading-relaxed line-clamp-2">{lead.agent_notes || '—'}</p>
+                          <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-2">{lead.agent_notes || '—'}</p>
                         </td>
 
                         {/* Created */}
                         <td className="px-4 py-3">
-                          <span className="text-xs font-medium text-slate-400">
+                          <span className="text-xs font-medium text-slate-600">
                             {new Date(lead.created_at).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}
                           </span>
                         </td>
@@ -1101,7 +1101,7 @@ export default function Dashboard() {
                 return (
                   <div 
                     key={stage} 
-                    className="w-72 shrink-0 flex flex-col min-h-0 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden"
+                    className="w-56 shrink-0 flex flex-col min-h-0 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, stage)}
                   >
