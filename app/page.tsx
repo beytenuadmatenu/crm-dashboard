@@ -496,8 +496,10 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Spacer / Mobile Title */}
+          <div className="flex-1 flex justify-center md:block">
+            <span className="md:hidden font-bold text-slate-800 text-sm tracking-tight truncate">אדמתנו ביתנו CRM</span>
+          </div>
 
           {/* Clock */}
           <div className="hidden lg:flex flex-col items-end">
