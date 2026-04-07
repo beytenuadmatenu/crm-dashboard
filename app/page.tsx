@@ -732,7 +732,7 @@ export default function Dashboard() {
               </div>
 
               {/* Mobile Card View (Mobile/Tablet Only) */}
-              <div className="lg:hidden flex flex-col divide-y divide-slate-100">
+              <div className="lg:hidden flex-1 overflow-y-auto flex flex-col divide-y divide-slate-100 scrollbar-thin">
                  {filtered.map(lead => (
                    <div 
                     key={lead.id} 
@@ -777,7 +777,7 @@ export default function Dashboard() {
             </div>
           ) : viewMode === 'insights' ? (
             // MASTER MANAGEMENT DASHBOARD (The "WOW" Screen)
-            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+            <div className="flex-1 overflow-y-auto flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 pr-1 scrollbar-thin">
               
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -975,7 +975,7 @@ export default function Dashboard() {
               }
 
               return (
-                <div className="flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto flex flex-col gap-6 pr-1 scrollbar-thin pb-12">
                   {/* Desktop Grid View */}
                   <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
