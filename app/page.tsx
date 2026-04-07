@@ -551,27 +551,6 @@ export default function Dashboard() {
         {/* Workspace */}
         <div className="flex-1 overflow-hidden flex flex-col bg-slate-100/60 p-2 lg:p-3 gap-3 min-h-0">
           
-          {/* KPI Stats Grid - Only on insights view */}
-          {viewMode === 'insights' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-6 animate-in slide-in-from-top-4 duration-700">
-              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-indigo-100">
-                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">סה"כ לידים</p><h3 className="text-2xl font-black text-slate-900 tracking-tight">{stats.total}</h3></div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm"><Users size={22} /></div>
-              </div>
-              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-blue-100">
-                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">לידים חדשים</p><h3 className="text-2xl font-black text-blue-700 tracking-tight">{stats.new}</h3></div>
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm"><AlertCircle size={22} /></div>
-              </div>
-              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-amber-100">
-                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">ממתינים לפגישה</p><h3 className="text-2xl font-black text-amber-600 tracking-tight">{stats.meetings}</h3></div>
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500 shadow-sm"><Calendar size={22} /></div>
-              </div>
-              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-emerald-100">
-                <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">לקוחות מאושרים</p><h3 className="text-2xl font-black text-emerald-700 tracking-tight">{stats.clients}</h3></div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-sm"><CheckCircle2 size={22} /></div>
-              </div>
-            </div>
-          )}
 
           {viewMode === 'table' ? (
             <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col" style={{boxShadow: 'var(--shadow-card)'}}>
@@ -737,7 +716,7 @@ export default function Dashboard() {
               </div>
 
               {/* Mobile Card View (Mobile/Tablet Only) */}
-              <div className="lg:hidden flex-1 overflow-y-auto flex flex-col divide-y divide-slate-100 scrollbar-thin">
+              <div className="lg:hidden flex-1 min-h-0 overflow-y-auto flex flex-col divide-y divide-slate-100 scrollbar-thin">
                  {filtered.map(lead => (
                    <div 
                     key={lead.id} 
@@ -782,7 +761,27 @@ export default function Dashboard() {
             </div>
           ) : viewMode === 'insights' ? (
             // MASTER MANAGEMENT DASHBOARD (The "WOW" Screen)
-            <div className="flex-1 overflow-y-auto flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 pr-1 scrollbar-thin">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 pr-1 scrollbar-thin">
+              
+              {/* KPI Stats Grid - Moved inside scrolling container */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 animate-in slide-in-from-top-4 duration-700">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-indigo-100">
+                  <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">סה"כ לידים</p><h3 className="text-2xl font-black text-slate-900 tracking-tight">{stats.total}</h3></div>
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm"><Users size={22} /></div>
+                </div>
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-blue-100">
+                  <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">לידים חדשים</p><h3 className="text-2xl font-black text-blue-700 tracking-tight">{stats.new}</h3></div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm"><AlertCircle size={22} /></div>
+                </div>
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-amber-100">
+                  <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">ממתינים לפגישה</p><h3 className="text-2xl font-black text-amber-600 tracking-tight">{stats.meetings}</h3></div>
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500 shadow-sm"><Calendar size={22} /></div>
+                </div>
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center justify-between transition-all cursor-default group hover:shadow-md hover:border-emerald-100">
+                  <div><p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">לקוחות מאושרים</p><h3 className="text-2xl font-black text-emerald-700 tracking-tight">{stats.clients}</h3></div>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-sm"><CheckCircle2 size={22} /></div>
+                </div>
+              </div>
               
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -980,9 +979,9 @@ export default function Dashboard() {
               }
 
               return (
-                <div className="flex-1 overflow-y-auto flex flex-col gap-6 pr-1 scrollbar-thin pb-12">
+                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 scrollbar-thin pb-12">
                   {/* Desktop Grid View */}
-                  <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
+                  <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500 shrink-0">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                       <div className="flex items-center gap-4">
                         <button onClick={() => setCalMonth(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><ChevronRight size={20}/></button>
