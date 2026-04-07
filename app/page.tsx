@@ -497,8 +497,11 @@ export default function Dashboard() {
           </div>
 
           {/* Spacer / Mobile Title */}
-          <div className="flex-1 flex justify-center md:block">
-            <span className="md:hidden font-bold text-slate-800 text-sm tracking-tight truncate">אדמתנו ביתנו CRM</span>
+          <div className="flex-1 flex justify-center items-center md:block">
+            <div className="md:hidden flex items-center gap-2">
+              <img src="/LOGO.png" alt="Logo" className="w-5 h-5 object-contain" />
+              <span className="font-bold text-slate-800 text-sm tracking-tight truncate">אדמתנו ביתנו CRM</span>
+            </div>
           </div>
 
           {/* Clock */}
