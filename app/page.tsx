@@ -738,10 +738,19 @@ export default function Dashboard() {
                               <div className="text-sm text-slate-400 font-mono font-medium">{lead.phone}</div>
                            </div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ring-1 ring-inset ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border} shadow-sm inline-flex items-center gap-1`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[lead.status]?.dot}`}></span>
-                          {STATUS_CONFIG[lead.status]?.label}
-                        </span>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ring-1 ring-inset ${STATUS_CONFIG[lead.status]?.bg} ${STATUS_CONFIG[lead.status]?.color} ${STATUS_CONFIG[lead.status]?.border} shadow-sm inline-flex items-center gap-1`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[lead.status]?.dot}`}></span>
+                            {STATUS_CONFIG[lead.status]?.label}
+                          </span>
+                          <span className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-bold border ${
+                            lead.summary_sentence?.includes('[פייסבוק]') ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                            lead.summary_sentence?.includes('[ידני]')    ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                            'bg-emerald-50 text-emerald-600 border-emerald-100'
+                          }`}>
+                            {lead.summary_sentence?.includes('[פייסבוק]') ? 'פייסבוק' : lead.summary_sentence?.includes('[ידני]') ? 'ידני' : 'בוט'}
+                          </span>
+                        </div>
                      </div>
                      
                      {lead.summary_sentence && (
