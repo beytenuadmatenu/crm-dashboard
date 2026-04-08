@@ -638,37 +638,37 @@ export default function Dashboard() {
                         {/* Meeting */}
                         <td className="px-4 py-3">
                           <span className="text-xs font-medium text-slate-600">
-                            {lead.meeting_time || <span className="text-slate-300">—</span>}
+                            {lead.meeting_time || <span className="text-slate-200"></span>}
                           </span>
                         </td>
 
                         {/* City */}
                         <td className="px-4 py-3">
-                          <span className="text-xs font-medium text-slate-600">{lead.city || '—'}</span>
+                          <span className="text-xs font-medium text-slate-600">{lead.city || ''}</span>
                         </td>
 
                         {/* Consultant */}
                         <td className="px-4 py-3 text-center">
                           {lead.consultant
                             ? <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">{lead.consultant}</span>
-                            : <span className="text-slate-300 text-xs">—</span>
+                            : <span className="text-slate-200 text-xs"></span>
                           }
                         </td>
 
                         {/* Summary */}
                         <td className="px-4 py-3 max-w-[200px]">
-                          <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-2">
-                            {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || '—'}
-                          </p>
+                          <span className="text-xs font-medium text-slate-600 line-clamp-2">
+                            {lead.summary_sentence?.replace(/^\[פייסבוק\]:\s*/, '').replace(/^\[פייסבוק\]/, '').replace(/^\[ידני\]:\s*/, '').replace(/^\[ידני\]/, '') || ''}
+                          </span>
                         </td>
 
                         {/* Notes */}
                         <td className="px-4 py-3 max-w-[200px]">
-                          <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-2">{lead.agent_notes || '—'}</p>
+                          <span className="text-xs font-medium text-slate-600 line-clamp-2">{lead.agent_notes || ''}</span>
                         </td>
 
                         {/* Created */}
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-xs font-medium text-slate-600">
                             {new Date(lead.created_at).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}
                           </span>
@@ -983,27 +983,58 @@ export default function Dashboard() {
                       <h3 className="text-lg font-bold text-slate-800">פילוח גיאוגרפי</h3>
                       <MapPin size={20} className="text-slate-400"/>
                     </div>
-                    <div className="flex-1 flex flex-col gap-3 lg:gap-4 overflow-y-auto max-h-[220px] pr-1 scrollbar-thin">
+                    <div className="flex-1 overflow-y-auto max-h-[240px] pr-1 scrollbar-thin">
                        {(() => {
                          const citiesMap: Record<string, number> = {};
                          leads.forEach(l => { if(l.city) citiesMap[l.city] = (citiesMap[l.city] || 0) + 1 });
-                         const sortedCities = Object.entries(citiesMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
-                         if (sortedCities.length === 0) return <div className="text-slate-400 text-sm py-10 text-center">אין נתוני ערים</div>;
-                         return sortedCities.map(([city, count]) => (
-                             <div 
-                               key={city} 
-                               onClick={() => setDrillDownData({ title: `לידים מהעיר: ${city}`, leads: leads.filter(l => l.city === city) })}
-                               className="flex flex-col gap-1.5 cursor-pointer group/city border-r-2 border-transparent hover:border-indigo-500 pr-2 transition-all w-full"
-                             >
-                               <div className="flex justify-between text-xs font-bold text-slate-600 group-hover/city:text-indigo-600 transition-colors">
-                                 <span>{city}</span>
-                                 <span>{count}</span>
-                                </div>
-                               <div className="relative h-1.5 bg-slate-50 rounded-full overflow-hidden">
-                                 <div className="absolute inset-y-0 right-0 bg-indigo-500/60 rounded-full group-hover/city:bg-indigo-600 transition-all duration-500" style={{width: `${stats.total > 0 ? (count / stats.total) * 100 : 0}%`}}></div>
-                               </div>
-                             </div>
-                           ));
+                         const sortedCities = Object.entries(citiesMap).sort((a,b) => b[1] - a[1]).slice(0, 12);
+                         
+                         if (sortedCities.length === 0) return (
+                           <div className="h-full flex flex-col items-center justify-center text-slate-300 py-10">
+                             <MapPin size={32} className="mb-2 opacity-20"/>
+                             <p className="text-sm font-bold">אין נתוני ערים</p>
+                           </div>
+                         );
+
+                         const maxCount = sortedCities[0][1];
+
+                         return (
+                           <div className="grid grid-cols-2 gap-3">
+                             {sortedCities.map(([city, count], idx) => {
+                               const pct = Math.round((count / stats.total) * 100);
+                               const heatmapOpacity = Math.max(0.1, count / maxCount);
+                               
+                               return (
+                                 <div 
+                                   key={city} 
+                                   onClick={() => setDrillDownData({ title: `לידים מהעיר: ${city}`, leads: leads.filter(l => l.city === city) })}
+                                   className="relative group/city cursor-pointer p-3 rounded-2xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-md transition-all duration-300 overflow-hidden"
+                                 >
+                                   <div 
+                                     className="absolute inset-0 bg-indigo-600 transition-transform duration-500 origin-right -translate-x-full group-hover/city:translate-x-0 opacity-[0.03]"
+                                     style={{ transform: `scaleX(${count / maxCount})`, transformOrigin: 'right' }}
+                                   />
+                                   
+                                   <div className="relative flex flex-col gap-1">
+                                     <div className="flex justify-between items-start">
+                                       <span className="text-xs font-bold text-slate-700 group-hover/city:text-indigo-600 transition-colors truncate pl-2">{city}</span>
+                                       <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md">{count}</span>
+                                     </div>
+                                     <div className="flex items-center gap-2 mt-1">
+                                       <div className="flex-1 h-1 bg-slate-50 rounded-full overflow-hidden">
+                                         <div 
+                                           className="h-full bg-indigo-500 rounded-full transition-all duration-1000" 
+                                           style={{ width: `${(count / maxCount) * 100}%`, opacity: heatmapOpacity }}
+                                         />
+                                       </div>
+                                       <span className="text-[9px] font-bold text-slate-400">{pct}%</span>
+                                     </div>
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         );
                        })()}
                     </div>
                  </div>
