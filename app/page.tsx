@@ -356,6 +356,11 @@ export default function Dashboard() {
     meetings: leads.filter(l => l.status === 'MEETING_SCHEDULED').length,
     docs: leads.filter(l => l.status === 'DOC_COLLECTION').length,
     clients: leads.filter(l => l.status === 'CLIENT').length,
+    sources: {
+      facebook: leads.filter(l => l.summary_sentence?.includes('[פייסבוק]')).length,
+      manual: leads.filter(l => l.summary_sentence?.includes('[ידני]')).length,
+      bot: leads.filter(l => !l.summary_sentence?.includes('[פייסבוק]') && !l.summary_sentence?.includes('[ידני]')).length
+    }
   }), [leads]);
 
   // Lead Scoring Logic
@@ -826,10 +831,10 @@ export default function Dashboard() {
               )}
 
               {/* Main Visuals Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
                 {/* 1. Conversion Funnel (Custom SVG) */}
-                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm">
+                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm h-full flex flex-col">
                   <h3 className="text-lg font-bold text-slate-800 mb-8">משפך המרה (Conversion Funnel)</h3>
                   <div className="flex flex-col gap-4 relative">
                     {[
@@ -852,6 +857,16 @@ export default function Dashboard() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Funnel Insight - Added to fill space and balance vs Leaderboard */}
+                  <div className="mt-auto pt-8 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">מדד אפקטיביות (ROI)</p>
+                      <p className="text-sm font-bold text-slate-800">סיכוי סגירה ממוצע של {stats.total > 0 ? Math.round((stats.clients / stats.total) * 100) : 0}% מכלל הפניות</p>
+                      <p className="text-[10px] text-indigo-500 font-bold mt-1">ביצועי מערכת מעל הממוצע החודשי</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center animate-pulse"><TrendingUp size={20} /></div>
+                  </div>
                 </div>
 
                 {/* 2. Consultant Performance Leaderboard */}
@@ -868,7 +883,7 @@ export default function Dashboard() {
                   const medals = ['🥇', '🥈', '🥉', ''];
 
                   return (
-                    <div className="bg-white border border-slate-200 p-6 lg:p-8 rounded-3xl shadow-sm flex flex-col">
+                    <div className="bg-white border border-slate-200 p-5 lg:px-6 lg:py-5 rounded-3xl shadow-sm flex flex-col">
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-bold text-slate-800">ביצועי יועצים (Leaderboard)</h3>
                         <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
@@ -877,14 +892,14 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2">
                         {consultants.map((con, idx) => {
                           const pct = maxFiles > 0 ? (con.files / maxFiles) * 100 : 0;
                           return (
                             <div
                               key={con.id}
                               onClick={() => setDrillDownData({ title: `לידים בטיפול: ${con.name}`, leads: leads.filter(l => l.consultant === con.id) })}
-                              className={`relative rounded-2xl border border-slate-100 p-4 group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 ${idx === 0 ? 'ring-2 ring-indigo-100 bg-gradient-to-l from-indigo-50/40 to-white' : 'bg-white hover:bg-slate-50/50'}`}
+                              className={`relative rounded-2xl border border-slate-100 p-3.5 group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 ${idx === 0 ? 'ring-2 ring-indigo-100 bg-gradient-to-l from-indigo-50/40 to-white' : 'bg-white hover:bg-slate-50/50'}`}
                               style={{ animationDelay: `${idx * 100}ms` }}
                             >
                               <div className="flex items-center gap-4 mb-3">
@@ -898,7 +913,7 @@ export default function Dashboard() {
                                 </div>
 
                                 {/* Avatar */}
-                                <div className={`w-11 h-11 rounded-xl ${con.bg} ${con.text} ring-1 ${con.ring} flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                                <div className={`w-10 h-10 rounded-xl ${con.bg} ${con.text} ring-1 ${con.ring} flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
                                   {con.name.charAt(0)}
                                 </div>
 
@@ -910,7 +925,7 @@ export default function Dashboard() {
 
                                 {/* Big Case Count */}
                                 <div className="flex flex-col items-center shrink-0">
-                                  <span className={`text-2xl font-black ${con.text} leading-none tabular-nums`}>{con.files}</span>
+                                  <span className={`text-xl font-black ${con.text} leading-none tabular-nums`}>{con.files}</span>
                                   <span className="text-[9px] font-bold text-slate-300 mt-0.5 uppercase tracking-wider">תיקים</span>
                                 </div>
                               </div>
@@ -934,9 +949,9 @@ export default function Dashboard() {
                       </div>
 
                       {/* Mini distribution bar at bottom */}
-                      <div className="mt-5 pt-4 border-t border-slate-100">
+                      <div className="mt-4 pt-3 border-t border-slate-100">
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">חלוקת עומסים</div>
-                        <div className="flex h-3 rounded-full overflow-hidden shadow-inner bg-slate-100 gap-px">
+                        <div className="flex h-2 rounded-full overflow-hidden shadow-inner bg-slate-100 gap-px">
                           {consultants.map(con => (
                             <div
                               key={con.id}
@@ -960,20 +975,20 @@ export default function Dashboard() {
                 })()}
               </div>
 
-              {/* Geo & Alerts Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-right">
-                 {/* Geo Heatmap Simulation */}
-                 <div className="lg:col-span-2 bg-white border border-slate-200 p-6 lg:p-8 rounded-3xl shadow-sm min-h-[300px]">
+              {/* Geo, Sources & Alerts Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 text-right">
+                 {/* 1. Geo Heatmap */}
+                 <div className="bg-white border border-slate-200 p-5 lg:p-6 rounded-3xl shadow-sm flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-lg font-bold text-slate-800">פילוח גיאוגרפי (Top Cities)</h3>
+                      <h3 className="text-lg font-bold text-slate-800">פילוח גיאוגרפי</h3>
                       <MapPin size={20} className="text-slate-400"/>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 lg:gap-y-6">
+                    <div className="flex-1 flex flex-col gap-3 lg:gap-4 overflow-y-auto max-h-[220px] pr-1 scrollbar-thin">
                        {(() => {
                          const citiesMap: Record<string, number> = {};
                          leads.forEach(l => { if(l.city) citiesMap[l.city] = (citiesMap[l.city] || 0) + 1 });
                          const sortedCities = Object.entries(citiesMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
-                         if (sortedCities.length === 0) return <div className="text-slate-400 text-sm">אין נתוני ערים</div>;
+                         if (sortedCities.length === 0) return <div className="text-slate-400 text-sm py-10 text-center">אין נתוני ערים</div>;
                          return sortedCities.map(([city, count]) => (
                              <div 
                                key={city} 
@@ -982,9 +997,9 @@ export default function Dashboard() {
                              >
                                <div className="flex justify-between text-xs font-bold text-slate-600 group-hover/city:text-indigo-600 transition-colors">
                                  <span>{city}</span>
-                                 <span>{count} לידים</span>
+                                 <span>{count}</span>
                                 </div>
-                               <div className="relative h-2 bg-slate-50 rounded-full overflow-hidden">
+                               <div className="relative h-1.5 bg-slate-50 rounded-full overflow-hidden">
                                  <div className="absolute inset-y-0 right-0 bg-indigo-500/60 rounded-full group-hover/city:bg-indigo-600 transition-all duration-500" style={{width: `${stats.total > 0 ? (count / stats.total) * 100 : 0}%`}}></div>
                                </div>
                              </div>
@@ -993,8 +1008,40 @@ export default function Dashboard() {
                     </div>
                  </div>
 
+                 {/* 2. Lead Source Distribution */}
+                 <div className="bg-white border border-slate-200 p-5 lg:p-6 rounded-3xl shadow-sm flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-bold text-slate-800">פילוח מקורות ליד</h3>
+                      <Zap size={20} className="text-indigo-400"/>
+                    </div>
+                    
+                    <div className="flex flex-col gap-5 flex-1 justify-center">
+                       {[
+                         { id: 'bot', label: 'וואטסאפ (בוט)', count: stats.sources.bot, color: 'bg-emerald-500', icon: Send, textColor: 'text-emerald-600', leads: leads.filter(l => !l.summary_sentence?.includes('[פייסבוק]') && !l.summary_sentence?.includes('[ידני]')) },
+                         { id: 'facebook', label: 'פייסבוק (ממומן)', count: stats.sources.facebook, color: 'bg-blue-600', icon: LayoutDashboard, textColor: 'text-blue-600', leads: leads.filter(l => l.summary_sentence?.includes('[פייסבוק]')) },
+                         { id: 'manual', label: 'הקמה ידנית', count: stats.sources.manual, color: 'bg-amber-500', icon: Plus, textColor: 'text-amber-600', leads: leads.filter(l => l.summary_sentence?.includes('[ידני]')) }
+                       ].map(src => {
+                         const pct = stats.total > 0 ? Math.round((src.count / stats.total) * 100) : 0;
+                         return (
+                           <div key={src.id} className="cursor-pointer group" onClick={() => setDrillDownData({ title: `לידים מ${src.label}`, leads: src.leads })}>
+                             <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                   <div className={`p-1.5 rounded-lg ${src.color.replace('bg-', 'bg-opacity-10 ')} ${src.textColor}`}><src.icon size={14}/></div>
+                                   <span className="text-sm font-bold text-slate-700">{src.label}</span>
+                                </div>
+                                <div className="text-xs font-black text-slate-900">{src.count} <span className="text-slate-300 font-bold">({pct}%)</span></div>
+                             </div>
+                             <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                                <div className={`h-full ${src.color} transition-all duration-1000`} style={{width: `${pct}%`}}></div>
+                             </div>
+                           </div>
+                         );
+                       })}
+                    </div>
+                 </div>
+
                  {/* Lead Control Alerts */}
-                 <div className="bg-red-50/50 border border-red-100 p-6 lg:p-8 rounded-3xl flex flex-col gap-6">
+                 <div className="bg-red-50/50 border border-red-100 p-5 lg:px-6 lg:py-5 rounded-3xl flex flex-col gap-6">
                     <div className="flex items-center gap-2 text-red-600">
                       <AlertCircle size={24}/>
                       <h3 className="font-bold text-lg">בקרת לידים והתראות</h3>
