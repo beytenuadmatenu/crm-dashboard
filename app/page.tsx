@@ -826,10 +826,10 @@ export default function Dashboard() {
               )}
 
               {/* Main Visuals Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 
                 {/* 1. Conversion Funnel (Custom SVG) */}
-                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm min-h-[400px]">
+                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm">
                   <h3 className="text-lg font-bold text-slate-800 mb-8">משפך המרה (Conversion Funnel)</h3>
                   <div className="flex flex-col gap-4 relative">
                     {[
@@ -855,40 +855,109 @@ export default function Dashboard() {
                 </div>
 
                 {/* 2. Consultant Performance Leaderboard */}
-                <div className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm">
-                   <h3 className="text-lg font-bold text-slate-800 mb-6">ביצועי יועצים (Leaderboard)</h3>
-                   <div className="divide-y divide-slate-100">
-                      {[
-                        { name: 'ספיר', files: leads.filter(l => l.consultant === 'sapir').length, color: 'bg-indigo-50 text-indigo-600', id: 'sapir' },
-                        { name: 'עוזי', files: leads.filter(l => l.consultant === 'uzi').length, color: 'bg-amber-50 text-amber-600', id: 'uzi' },
-                        { name: 'אלכס', files: leads.filter(l => l.consultant === 'alex').length, color: 'bg-emerald-50 text-emerald-600', id: 'alex' },
-                        { name: 'יוסף', files: leads.filter(l => l.consultant === 'yosef').length, color: 'bg-blue-50 text-blue-600', id: 'yosef' }
-                      ].sort((a,b) => b.files - a.files).map((con, idx) => (
-                        <div 
-                          key={idx} 
-                          onClick={() => setDrillDownData({ title: `לידים בטיפול: ${con.name}`, leads: leads.filter(l => l.consultant === con.id) })}
-                          className="flex items-center justify-between py-4 group hover:px-2 hover:bg-slate-50 rounded-xl transition-all cursor-pointer"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="text-xl font-bold text-slate-300 w-6">#{idx+1}</div>
-                            <div className={`w-10 h-10 rounded-xl ${con.color} flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 transition-transform`}>
-                              {con.name.charAt(0)}
-                            </div>
-                            <div>
-                               <div className="font-bold text-slate-800 text-sm">{con.name}</div>
-                               <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{con.files} תיקים בטיפול</div>
-                            </div>
-                          </div>
-                          <div className="text-left">
-                             <div className="text-[10px] text-emerald-500 font-bold overflow-hidden">
-                               <div className="flex items-center gap-1 justify-end"><TrendingUp size={10}/> 4.8★</div>
-                             </div>
-                             <div className="text-[10px] text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">צפה בכולם ←</div>
-                          </div>
+                {(() => {
+                  const consultants = [
+                    { name: 'ספיר', id: 'sapir', gradient: 'from-violet-500 to-indigo-600', bg: 'bg-violet-50', text: 'text-violet-700', ring: 'ring-violet-200', dot: 'bg-violet-500' },
+                    { name: 'עוזי', id: 'uzi', gradient: 'from-amber-400 to-orange-500', bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-200', dot: 'bg-amber-500' },
+                    { name: 'אלכס', id: 'alex', gradient: 'from-emerald-400 to-teal-600', bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500' },
+                    { name: 'יוסף', id: 'yosef', gradient: 'from-sky-400 to-blue-600', bg: 'bg-sky-50', text: 'text-sky-700', ring: 'ring-sky-200', dot: 'bg-sky-500' }
+                  ].map(c => ({ ...c, files: leads.filter(l => l.consultant === c.id).length }))
+                   .sort((a, b) => b.files - a.files);
+                  const maxFiles = Math.max(...consultants.map(c => c.files), 1);
+                  const totalFiles = consultants.reduce((s, c) => s + c.files, 0);
+                  const medals = ['🥇', '🥈', '🥉', ''];
+
+                  return (
+                    <div className="bg-white border border-slate-200 p-6 lg:p-8 rounded-3xl shadow-sm flex flex-col">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">ביצועי יועצים (Leaderboard)</h3>
+                        <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                          <span className="text-xs font-bold text-slate-400">סה״כ בטיפול:</span>
+                          <span className="text-sm font-extrabold text-indigo-600">{totalFiles}</span>
                         </div>
-                      ))}
-                   </div>
-                </div>
+                      </div>
+
+                      <div className="flex flex-col gap-3">
+                        {consultants.map((con, idx) => {
+                          const pct = maxFiles > 0 ? (con.files / maxFiles) * 100 : 0;
+                          return (
+                            <div
+                              key={con.id}
+                              onClick={() => setDrillDownData({ title: `לידים בטיפול: ${con.name}`, leads: leads.filter(l => l.consultant === con.id) })}
+                              className={`relative rounded-2xl border border-slate-100 p-4 group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-slate-200 hover:-translate-y-0.5 ${idx === 0 ? 'ring-2 ring-indigo-100 bg-gradient-to-l from-indigo-50/40 to-white' : 'bg-white hover:bg-slate-50/50'}`}
+                              style={{ animationDelay: `${idx * 100}ms` }}
+                            >
+                              <div className="flex items-center gap-4 mb-3">
+                                {/* Medal / Rank */}
+                                <div className="shrink-0 w-8 text-center">
+                                  {medals[idx] ? (
+                                    <span className="text-xl leading-none">{medals[idx]}</span>
+                                  ) : (
+                                    <span className="text-base font-extrabold text-slate-300">#{idx + 1}</span>
+                                  )}
+                                </div>
+
+                                {/* Avatar */}
+                                <div className={`w-11 h-11 rounded-xl ${con.bg} ${con.text} ring-1 ${con.ring} flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                                  {con.name.charAt(0)}
+                                </div>
+
+                                {/* Name + Label */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-bold text-slate-800 text-sm truncate">{con.name}</div>
+                                  <div className="text-[10px] text-slate-400 font-semibold">יועץ משכנתאות</div>
+                                </div>
+
+                                {/* Big Case Count */}
+                                <div className="flex flex-col items-center shrink-0">
+                                  <span className={`text-2xl font-black ${con.text} leading-none tabular-nums`}>{con.files}</span>
+                                  <span className="text-[9px] font-bold text-slate-300 mt-0.5 uppercase tracking-wider">תיקים</span>
+                                </div>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div className="mr-12 ml-0">
+                                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden relative">
+                                  <div
+                                    className={`absolute inset-y-0 right-0 bg-gradient-to-l ${con.gradient} rounded-full transition-all duration-1000 ease-out shadow-sm`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <div className="flex justify-between items-center mt-1.5">
+                                  <span className="text-[10px] font-bold text-slate-300">{totalFiles > 0 ? Math.round((con.files / totalFiles) * 100) : 0}% מסה״כ</span>
+                                  <span className="text-[10px] font-bold text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-1">צפה בכולם ←</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Mini distribution bar at bottom */}
+                      <div className="mt-5 pt-4 border-t border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">חלוקת עומסים</div>
+                        <div className="flex h-3 rounded-full overflow-hidden shadow-inner bg-slate-100 gap-px">
+                          {consultants.map(con => (
+                            <div
+                              key={con.id}
+                              className={`bg-gradient-to-l ${con.gradient} transition-all duration-700 first:rounded-r-full last:rounded-l-full relative group/seg`}
+                              style={{ width: `${totalFiles > 0 ? (con.files / totalFiles) * 100 : 25}%` }}
+                              title={`${con.name}: ${con.files} תיקים`}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex justify-between mt-2">
+                          {consultants.map(con => (
+                            <div key={con.id} className="flex items-center gap-1">
+                              <span className={`w-2 h-2 rounded-full ${con.dot}`} />
+                              <span className="text-[10px] font-semibold text-slate-500">{con.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Geo & Alerts Row */}
