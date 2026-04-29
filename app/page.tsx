@@ -1637,18 +1637,28 @@ export default function Dashboard() {
                   <div className="flex justify-end">
                     <button 
                       onClick={() => {
+                        if (!notesText.trim()) {
+                          updateLeadField(profileLead.id, 'agent_notes', '');
+                          setNotesText('');
+                          alert('הערות נמחקו בהצלחה');
+                          return;
+                        }
+
                         const now = new Date();
                         const timeStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                        const prefix = `[${loggedUser?.displayName || 'יועץ'} - ${timeStr}]: `;
+                        const currentUserTag = `[${loggedUser?.displayName || 'יועץ'} - ${timeStr}]`;
                         
-                        // Check if the timestamp is already added to prevent duplicate on multiple clicks
-                        const finalNotes = notesText.startsWith(`[${loggedUser?.displayName || 'יועץ'}`) 
-                          ? notesText 
-                          : prefix + notesText;
-
-                        updateLeadField(profileLead.id, 'agent_notes', finalNotes);
-                        setNotesText(finalNotes); // Sync local state
-                        alert('הערה נשמרה בהצלחה!');
+                        // If the text already starts with the current user's name (from a previous save in the same session), don't duplicate
+                        if (notesText.trim().startsWith(`[${loggedUser?.displayName || 'יועץ'}`)) {
+                          updateLeadField(profileLead.id, 'agent_notes', notesText.trim());
+                          alert('הערה עודכנה בהצלחה!');
+                        } else {
+                          // Prepend new note with tag and double newline for clarity
+                          const finalNotes = `${currentUserTag}: \n${notesText}\n\n`;
+                          updateLeadField(profileLead.id, 'agent_notes', finalNotes);
+                          setNotesText(finalNotes);
+                          alert('הערה חדשה נוספה בהצלחה!');
+                        }
                       }}
                       className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-amber-200 transition-all active:scale-95"
                     >
