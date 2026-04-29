@@ -112,6 +112,7 @@ export default function Dashboard() {
 
   // Debounced agent notes — local state to prevent input lag
   const [notesText, setNotesText] = useState('');
+  const [newNoteEntry, setNewNoteEntry] = useState('');
   useEffect(() => {
     if (profileLead) setNotesText(profileLead.agent_notes || '');
   }, [profileLead?.id]);
@@ -1624,46 +1625,62 @@ export default function Dashboard() {
 
               {/* Notes Tab */}
               {activeTab === 'notes' && (
-                <div className="flex flex-col h-full gap-4">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-slate-500">פירוט שיחות, הערות פנימיות ותיעוד התקדמות.</p>
-                  </div>
-                  <textarea 
-                    value={notesText} 
-                    onChange={e => setNotesText(e.target.value)}
-                    placeholder="הקלד/י כאן את ההערות שלך..."
-                    className="w-full flex-1 min-h-[300px] p-5 rounded-2xl bg-amber-50/50 border border-amber-100 text-slate-800 leading-relaxed outline-none focus:border-amber-300 focus:bg-amber-50 transition-colors resize-none font-sans shadow-inner"
-                  />
-                  <div className="flex justify-end">
-                    <button 
-                      onClick={() => {
-                        if (!notesText.trim()) {
-                          updateLeadField(profileLead.id, 'agent_notes', '');
-                          setNotesText('');
-                          alert('הערות נמחקו בהצלחה');
-                          return;
-                        }
-
-                        const now = new Date();
-                        const timeStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                        const currentUserTag = `[${loggedUser?.displayName || 'יועץ'} - ${timeStr}]`;
-                        
-                        // If the text already starts with the current user's name (from a previous save in the same session), don't duplicate
-                        if (notesText.trim().startsWith(`[${loggedUser?.displayName || 'יועץ'}`)) {
-                          updateLeadField(profileLead.id, 'agent_notes', notesText.trim());
-                          alert('הערה עודכנה בהצלחה!');
-                        } else {
-                          // Prepend new note with tag and double newline for clarity
-                          const finalNotes = `${currentUserTag}: \n${notesText}\n\n`;
+                <div className="flex flex-col h-full gap-5">
+                  {/* New Note Entry Box */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">הערה חדשה</label>
+                      <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md font-bold">סוכן: {loggedUser?.displayName}</span>
+                    </div>
+                    <textarea 
+                      value={newNoteEntry} 
+                      onChange={e => setNewNoteEntry(e.target.value)}
+                      placeholder="הקלד/י כאן עדכון חדש..."
+                      className="w-full min-h-[100px] p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 leading-relaxed outline-none focus:border-indigo-300 focus:bg-white transition-all resize-none text-sm"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => {
+                          if (!newNoteEntry.trim()) return alert('נא להזין טקסט להערה');
+                          
+                          const now = new Date();
+                          const timeStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                          const currentUserTag = `[${loggedUser?.displayName || 'יועץ'} - ${timeStr}]`;
+                          
+                          // Prepend new note at the top of history
+                          const finalNotes = `${currentUserTag}:\n${newNoteEntry.trim()}\n\n${notesText}`;
+                          
                           updateLeadField(profileLead.id, 'agent_notes', finalNotes);
                           setNotesText(finalNotes);
-                          alert('הערה חדשה נוספה בהצלחה!');
-                        }
-                      }}
-                      className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-amber-200 transition-all active:scale-95"
-                    >
-                      שמור הערות
-                    </button>
+                          setNewNoteEntry(''); // Clear input
+                          alert('הערה נוספה בהצלחה!');
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95"
+                      >
+                        הוסף הערה
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* History Box */}
+                  <div className="flex-1 flex flex-col gap-2 min-h-0">
+                    <div className="flex justify-between items-center">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">היסטוריית הערות</label>
+                       <button 
+                        onClick={() => {
+                          if(confirm('האם אתה בטוח שברצונך למחוק את כל היסטוריית ההערות?')) {
+                            updateLeadField(profileLead.id, 'agent_notes', '');
+                            setNotesText('');
+                          }
+                        }}
+                        className="text-[10px] text-red-400 hover:text-red-600 font-bold transition-colors"
+                       >
+                         נקה הכל
+                       </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto bg-amber-50/30 border border-amber-100 rounded-2xl p-5 whitespace-pre-wrap text-sm text-slate-700 leading-relaxed scrollbar-thin shadow-inner font-sans">
+                      {notesText || <span className="text-slate-300 italic">אין עדיין היסטוריית הערות לליד זה.</span>}
+                    </div>
                   </div>
                 </div>
               )}
